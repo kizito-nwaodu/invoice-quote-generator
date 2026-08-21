@@ -1,5 +1,5 @@
 /**
- * Currency, Date, and String Formatting Utilities
+ * Currency, Date, String Formatting, and Security Sanitization Utilities
  */
 
 export const CURRENCIES = {
@@ -100,7 +100,7 @@ export function getTodayDateString() {
  * @param {number} days 
  * @returns {string}
  */
-export function addDays(dateStr, days = 14) {
+export function addDays(dateStr, days = 0) {
   const d = dateStr ? new Date(dateStr) : new Date();
   d.setDate(d.getDate() + parseInt(days, 10));
   const y = d.getFullYear();
@@ -110,24 +110,57 @@ export function addDays(dateStr, days = 14) {
 }
 
 /**
- * Formats a document sequential number
+ * Formats sequential document numbers (e.g. "INV-0042")
  * @param {string} prefix 
- * @param {number} num 
+ * @param {number} counter 
  * @param {number} padLength 
- * @returns {string} e.g. "INV-00001"
+ * @returns {string}
  */
-export function formatDocNumber(prefix = 'INV-', num = 1, padLength = 5) {
-  const cleanPrefix = prefix || '';
-  const numStr = String(Math.max(1, parseInt(num, 10) || 1)).padStart(padLength, '0');
-  return `${cleanPrefix}${numStr}`;
+export function formatDocNumber(prefix = 'INV-', counter = 1, padLength = 4) {
+  const numStr = String(counter).padStart(padLength, '0');
+  return `${prefix}${numStr}`;
 }
 
 /**
- * Formats a tax or discount percentage
- * @param {number} rate 
+ * Parses and extracts counter number from formatted doc string
+ * @param {string} docNumber - e.g. "INV-0042"
+ * @returns {number|null}
+ */
+export function parseDocNumberCounter(docNumber) {
+  if (!docNumber) return null;
+  const match = docNumber.match(/(\d+)$/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Defensive Security: Escapes raw untrusted input to prevent Stored XSS injection.
+ * @param {string} str 
  * @returns {string}
  */
-export function formatPercent(rate) {
-  const num = typeof rate === 'number' ? rate : parseFloat(rate) || 0;
-  return `${num.toFixed(num % 1 === 0 ? 0 : 2)}%`;
+export function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Defensive Security: Sanitizes external URLs to prevent javascript: pseudo-protocols.
+ * @param {string} url 
+ * @returns {string}
+ */
+export function sanitizeURL(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (/^(https?:\/\/|mailto:|tel:|data:image\/)/i.test(trimmed)) {
+    return trimmed;
+  }
+  // Auto-prepend https if domain-like
+  if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return '';
 }

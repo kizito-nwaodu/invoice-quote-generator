@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://avatars.githubusercontent.com data: blob:;">
   <title>InvoiceMaster Pro — Production Invoice & Quote Generator</title>
   <meta name="description" content="Professional, deterministic Invoice & Quote Generator for freelancers, agencies, contractors, and businesses.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,13 +37,13 @@
 
       <!-- Quick Action Buttons -->
       <div class="sidebar-actions">
-        <a href="#/invoices/new" class="btn btn-primary btn-sm" style="width: 100%; justify-content: flex-start;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-          + New Invoice
+        <a href="#/invoices/new" class="btn btn-primary btn-sm" style="width: 100%; justify-content: flex-start; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          New Invoice
         </a>
-        <a href="#/quotes/new" class="btn btn-subtle btn-sm" style="width: 100%; justify-content: flex-start; background: rgba(255,255,255,0.06); color: #cbd5e1;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-          + New Quote
+        <a href="#/quotes/new" class="btn btn-subtle btn-sm" style="width: 100%; justify-content: flex-start; background: rgba(255,255,255,0.06); color: #cbd5e1; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          New Quote
         </a>
       </div>
 
@@ -55,11 +56,23 @@
           </span>
           Dashboard
         </a>
-        <a href="#/documents" class="nav-link">
+        <a href="#/invoices" class="nav-link">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </span>
+          Invoices
+        </a>
+        <a href="#/quotes" class="nav-link">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
           </span>
-          Documents
+          Quotes
+        </a>
+        <a href="#/documents" class="nav-link">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+          </span>
+          All Documents
         </a>
         <a href="#/customers" class="nav-link">
           <span class="nav-icon">
@@ -86,7 +99,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
           </span>
           Engine Tests
-          <span class="nav-badge">16</span>
+          <span class="nav-badge">17</span>
         </a>
         <a href="landing.html" class="nav-link" target="_blank" rel="noopener">
           <span class="nav-icon">
@@ -106,34 +119,43 @@
       </div>
     </aside>
 
-    <!-- Main Viewport Area -->
-    <main class="app-main">
+    <!-- Main Workspace Application -->
+    <div class="app-main">
+      <!-- Top Application Header -->
       <header class="app-topbar">
-        <div class="topbar-left">
-          <button id="btn-mobile-menu" class="mobile-menu-btn" aria-label="Toggle Menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="btn-mobile-menu" class="btn-icon" aria-label="Toggle Navigation Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
           </button>
-          <span class="topbar-title">InvoiceMaster Pro</span>
+          <div class="topbar-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="global-search" placeholder="Search invoices, quotes, clients (Press '/' to focus)..." aria-label="Global Search">
+          </div>
         </div>
-        <div class="topbar-right">
-          <a href="#/tests" class="btn btn-subtle btn-sm" style="color: #16a34a; font-weight: 600;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-            Engine Verified
-          </a>
-          <div id="topbar-user-widget" style="margin-left: 8px;"></div>
+
+        <div class="topbar-actions">
+          <button type="button" id="btn-topbar-new-doc" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            New Document
+          </button>
+          <div id="topbar-user-widget"></div>
         </div>
       </header>
 
-      <div id="app-viewport" class="app-viewport">
-        <!-- Rendered view goes here -->
-      </div>
-    </main>
+      <!-- Active Viewport Container -->
+      <main id="app-viewport" class="app-viewport" role="main">
+        <!-- Rendered dynamically by App View Controller -->
+      </main>
+    </div>
   </div>
 
-  <!-- Toast Container -->
+  <!-- Global Modal Host Container -->
+  <div id="modal-container"></div>
+
+  <!-- Notification Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Application Entry Point -->
+  <!-- Main ES Module Application Script -->
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

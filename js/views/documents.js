@@ -16,11 +16,24 @@ export const DocumentsView = {
     sortBy: 'date-desc'
   },
 
-  render(container) {
+  render(container, initialTypeFilter) {
     this.container = container;
+    if (initialTypeFilter) {
+      this.state.typeFilter = initialTypeFilter;
+    }
     const settings = SettingsRepo.get();
     const customers = CustomerRepo.getAll();
     const allDocs = DocumentRepo.getAll();
+
+    let pageTitle = 'All Documents';
+    let pageSubtitle = 'Manage, track, and export your invoices and quotes.';
+    if (this.state.typeFilter === 'invoice') {
+      pageTitle = 'Invoices';
+      pageSubtitle = 'Create, send, and track client invoice payments.';
+    } else if (this.state.typeFilter === 'quote') {
+      pageTitle = 'Quotes & Estimates';
+      pageSubtitle = 'Send proposals and convert accepted quotes into invoices.';
+    }
 
     // Apply filtering
     let filtered = allDocs.filter(doc => {
@@ -79,9 +92,9 @@ export const DocumentsView = {
         <!-- Header -->
         <div class="toolbar">
           <div>
-            <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Documents</h1>
+            <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">${pageTitle}</h1>
             <p style="color: var(--text-secondary); font-size: 13.5px; margin-top: 2px;">
-              Manage, track, and export your invoices and quotes.
+              ${pageSubtitle}
             </p>
           </div>
           <div class="filter-group">

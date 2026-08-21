@@ -1,82 +1,83 @@
 /**
- * Settings & Business Configuration View
- * Manages Business Identity, Invoicing Defaults, Branding, Taxes, Account & Workspace Deletion, and Data Backup/Restore.
+ * Application Settings View with Multi-Color Branding, Social Handles, and Invoicing Defaults
  */
 
-import { SettingsRepo, DataRepo } from '../storage/repository.js';
-import { BackupManager } from '../export/backup.js';
-import { Auth, Session } from '../auth/auth.js';
+import { SettingsRepo, CustomerRepo, ProductRepo, DocumentRepo } from '../storage/repository.js';
 import { getIcon } from '../../assets/icons.js';
+import { Auth } from '../auth/auth.js';
 
 export const SettingsView = {
-  activeTab: 'business', // 'business' | 'defaults' | 'branding' | 'account' | 'backup'
+  activeTab: 'business',
 
   render(container) {
     this.container = container;
     const settings = SettingsRepo.get();
     const business = settings.business || {};
-    const currentUser = Auth.currentUser() || { name: 'User', email: 'user@example.com' };
-    const currentOrg = Auth.currentOrg() || { id: 'org_default', name: 'My Workspace', plan: 'Free' };
-    const allUserOrgs = Auth.currentUserOrgs();
+    const currentUser = Auth.currentUser() || { name: 'Admin User', email: 'admin@invoicemaster.app' };
+    const currentOrg = Auth.currentOrg() || { name: 'My Business', id: 'org_default' };
+    const allOrgs = Auth.currentUserOrgs();
+
+    const currentBrandColor = settings.brandHeadingColor || settings.brandColor || '#2563eb';
+    const currentAccentColor = settings.brandAccentColor || '#3b82f6';
+    const currentHeaderBg = settings.brandHeaderBg || '#0f172a';
+    const currentBodyColor = settings.brandBodyColor || '#1e293b';
+    const currentFooterBg = settings.brandFooterBg || '#f8fafc';
+    const currentBrandFont = settings.brandFont || 'Inter';
+    const currentTemplate = settings.defaultTemplate || 'modern';
 
     const colorPresets = [
       { name: 'Royal Blue', hex: '#2563eb' },
-      { name: 'Indigo', hex: '#4f46e5' },
-      { name: 'Emerald', hex: '#059669' },
-      { name: 'Crimson', hex: '#dc2626' },
+      { name: 'Indigo Dream', hex: '#4f46e5' },
+      { name: 'Emerald Green', hex: '#059669' },
+      { name: 'Crimson Red', hex: '#dc2626' },
       { name: 'Deep Violet', hex: '#7c3aed' },
       { name: 'Midnight Slate', hex: '#0f172a' },
       { name: 'Warm Amber', hex: '#d97706' },
       { name: 'Teal Cyan', hex: '#0d9488' }
     ];
 
-    const currentBrandColor = settings.brandColor || '#2563eb';
-    const currentBrandFont = settings.brandFont || 'Inter';
-    const currentTemplate = settings.defaultTemplate || 'modern';
-
     container.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h1 class="view-title">Workspace Settings</h1>
-          <p class="view-subtitle">Customize business details, branding identity, invoice numbering, accounts, and data management.</p>
-        </div>
-        <div>
-          <button type="button" id="btn-save-settings" class="btn btn-primary">
-            ${getIcon('save')} Save Changes
+      <div class="view-container">
+        <!-- Top Header & Save Button -->
+        <div class="toolbar">
+          <div>
+            <h1 style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Settings & Configuration</h1>
+            <p style="color: var(--text-secondary); font-size: 13.5px; margin-top: 2px;">
+              Manage your business profile, multi-color branding, invoicing rules, social links, and account.
+            </p>
+          </div>
+          <button id="btn-save-settings" class="btn btn-primary">
+            ${getIcon('check')} Save All Changes
           </button>
         </div>
-      </div>
 
-      <!-- Navigation Tabs -->
-      <div class="segment-control" style="margin-bottom: 24px; max-width: 750px;">
-        <button type="button" class="segment-btn ${this.activeTab === 'business' ? 'active' : ''}" data-tab="business">
-          Business Profile
-        </button>
-        <button type="button" class="segment-btn ${this.activeTab === 'defaults' ? 'active' : ''}" data-tab="defaults">
-          Invoicing Defaults
-        </button>
-        <button type="button" class="segment-btn ${this.activeTab === 'branding' ? 'active' : ''}" data-tab="branding">
-          Branding & Identity
-        </button>
-        <button type="button" class="segment-btn ${this.activeTab === 'account' ? 'active' : ''}" data-tab="account">
-          Account & Workspaces
-        </button>
-        <button type="button" class="segment-btn ${this.activeTab === 'backup' ? 'active' : ''}" data-tab="backup">
-          Data & Backup
-        </button>
-      </div>
+        <!-- Settings Sub-Navigation Tabs -->
+        <div class="segmented-control" style="margin-bottom: 24px; display: inline-flex;">
+          <button class="segment-btn ${this.activeTab === 'business' ? 'active' : ''}" data-tab="business">
+            ${getIcon('user')} Business Profile
+          </button>
+          <button class="segment-btn ${this.activeTab === 'defaults' ? 'active' : ''}" data-tab="defaults">
+            ${getIcon('fileText')} Invoicing & Notes
+          </button>
+          <button class="segment-btn ${this.activeTab === 'branding' ? 'active' : ''}" data-tab="branding">
+            ${getIcon('sparkles')} Multi-Color Branding
+          </button>
+          <button class="segment-btn ${this.activeTab === 'account' ? 'active' : ''}" data-tab="account">
+            ${getIcon('shield')} Account & Workspaces
+          </button>
+          <button class="segment-btn ${this.activeTab === 'backup' ? 'active' : ''}" data-tab="backup">
+            ${getIcon('download')} Backup & Data
+          </button>
+        </div>
 
-      <!-- Tab Content Area -->
-      <div class="settings-content-wrapper">
-        
         <!-- Tab 1: Business Profile -->
         <div id="tab-business" class="tab-pane ${this.activeTab === 'business' ? 'active' : ''}" style="${this.activeTab === 'business' ? '' : 'display: none;'}">
           <div class="card" style="margin-bottom: 20px;">
-            <h2 class="card-title" style="margin-bottom: 18px;">${getIcon('building')} Business Contact Information</h2>
+            <h2 class="card-title" style="margin-bottom: 18px;">${getIcon('user')} Company / Freelancer Information</h2>
             
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Business / Legal Name *</label>
+                <label class="form-label required">Business or Trading Name</label>
                 <input type="text" id="biz-name" class="form-control" value="${business.name || ''}" placeholder="e.g. Acme Creative Studio LLC">
               </div>
               <div class="form-group">
@@ -95,7 +96,7 @@ export const SettingsView = {
                 <input type="text" id="biz-phone" class="form-control" value="${business.phone || ''}" placeholder="+1 (555) 019-2834">
               </div>
               <div class="form-group">
-                <label class="form-label">Website</label>
+                <label class="form-label">Website URL</label>
                 <input type="text" id="biz-website" class="form-control" value="${business.website || ''}" placeholder="https://yourdomain.com">
               </div>
             </div>
@@ -103,6 +104,36 @@ export const SettingsView = {
             <div class="form-group">
               <label class="form-label">Physical / Postal Address</label>
               <textarea id="biz-address" class="form-control" rows="3" placeholder="123 Innovation Way, Suite 400&#10;San Francisco, CA 94107&#10;United States">${business.address || ''}</textarea>
+            </div>
+          </div>
+
+          <!-- Social Media Profiles Card -->
+          <div class="card" style="margin-bottom: 20px;">
+            <h2 class="card-title" style="margin-bottom: 14px;">🌐 Social Media Handles (Displayed on Invoices & Quotes)</h2>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+              Add your social media channels to make your invoices and quotes interactive and build client trust.
+            </p>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">𝕏 / Twitter Handle</label>
+                <input type="text" id="biz-twitter" class="form-control" value="${business.twitter || ''}" placeholder="@yourhandle">
+              </div>
+              <div class="form-group">
+                <label class="form-label">💼 LinkedIn Page / Profile URL</label>
+                <input type="text" id="biz-linkedin" class="form-control" value="${business.linkedin || ''}" placeholder="https://linkedin.com/company/yourpage">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">📸 Instagram Handle</label>
+                <input type="text" id="biz-instagram" class="form-control" value="${business.instagram || ''}" placeholder="@yourbrand">
+              </div>
+              <div class="form-group">
+                <label class="form-label">📘 Facebook Page URL</label>
+                <input type="text" id="biz-facebook" class="form-control" value="${business.facebook || ''}" placeholder="https://facebook.com/yourpage">
+              </div>
             </div>
           </div>
 
@@ -129,7 +160,7 @@ export const SettingsView = {
           </div>
         </div>
 
-        <!-- Tab 2: Invoicing Defaults -->
+        <!-- Tab 2: Invoicing Defaults & Custom Thank You Notes -->
         <div id="tab-defaults" class="tab-pane ${this.activeTab === 'defaults' ? 'active' : ''}" style="${this.activeTab === 'defaults' ? '' : 'display: none;'}">
           <div class="card" style="margin-bottom: 20px;">
             <h2 class="card-title" style="margin-bottom: 18px;">${getIcon('hashtag')} Numbering Sequences</h2>
@@ -190,38 +221,29 @@ export const SettingsView = {
             </div>
           </div>
 
+          <!-- Distinct Thank You Messages Card -->
           <div class="card">
-            <h2 class="card-title" style="margin-bottom: 18px;">${getIcon('percent')} Default Tax Rate & Mode</h2>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Tax Label Name</label>
-                <input type="text" id="set-tax-name" class="form-control" value="${settings.taxName || 'Sales Tax'}" placeholder="e.g. VAT, GST, Sales Tax">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Default Rate (%)</label>
-                <input type="number" id="set-tax-rate" class="form-control" value="${settings.taxRate || 0}" step="0.1" min="0" max="100">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Tax Mode</label>
-                <select id="set-tax-mode" class="form-control">
-                  <option value="exclusive" ${settings.taxMode === 'exclusive' || !settings.taxMode ? 'selected' : ''}>Tax-Exclusive (Added on top)</option>
-                  <option value="inclusive" ${settings.taxMode === 'inclusive' ? 'selected' : ''}>Tax-Inclusive (Included in price)</option>
-                </select>
-              </div>
+            <h2 class="card-title" style="margin-bottom: 16px;">💬 Customized Thank You Notes & Terms</h2>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 18px;">
+              Set dedicated, distinct messages for invoices versus quotes.
+            </p>
+
+            <div class="form-group" style="margin-bottom: 18px;">
+              <label class="form-label" style="font-weight: 700;">📄 Default Invoice Thank You Note</label>
+              <textarea id="set-default-inv-notes" class="form-control" rows="3" placeholder="e.g. Thank you for your business! Please remit payment according to the terms above.">${settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.'}</textarea>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Default Document Footer Terms & Notes</label>
-              <textarea id="set-footer-notes" class="form-control" rows="3" placeholder="e.g. Thank you for your business. Please remit payment by the due date.">${settings.footerNotes || business.footerNotes || ''}</textarea>
+              <label class="form-label" style="font-weight: 700;">📑 Default Quote Thank You Note & Validity</label>
+              <textarea id="set-default-quo-notes" class="form-control" rows="3" placeholder="e.g. Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.">${settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.'}</textarea>
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: Branding & Identity -->
+        <!-- Tab 3: Multi-Color Branding & Identity Studio -->
         <div id="tab-branding" class="tab-pane ${this.activeTab === 'branding' ? 'active' : ''}" style="${this.activeTab === 'branding' ? '' : 'display: none;'}">
           
-          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+          <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px;">
             
             <!-- Controls Column -->
             <div>
@@ -250,27 +272,70 @@ export const SettingsView = {
                 </div>
               </div>
 
-              <!-- Brand Color Card -->
+              <!-- Multi-Color Mixing Studio -->
               <div class="card" style="margin-bottom: 20px;">
-                <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('edit')} Brand Primary Color</h2>
-                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 14px;">
-                  Applied across document headers, title text, totals highlights, and table borders.
+                <h2 class="card-title" style="margin-bottom: 14px;">🎨 Multi-Color Palette Customizer</h2>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+                  Mix and match distinct colors for your document headers, accents, body text, and footers.
                 </p>
 
-                <!-- Color Presets Swatches -->
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-                  ${colorPresets.map(c => `
-                    <button type="button" class="btn-color-swatch" data-color="${c.hex}" title="${c.name}" style="width: 32px; height: 32px; border-radius: 50%; background: ${c.hex}; border: 2px solid ${c.hex === currentBrandColor ? '#0f172a' : 'transparent'}; box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.15s ease;"></button>
-                  `).join('')}
+                <!-- Color 1: Header / Primary -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13px;">1. Heading & Title Color</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Main title, company name, grand total highlight</div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="color" id="set-color-heading" value="${currentBrandColor}" style="width: 38px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-strong);">
+                    <input type="text" id="set-color-heading-text" class="form-control" value="${currentBrandColor}" style="width: 95px; font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
+                  </div>
                 </div>
 
-                <div class="form-row">
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Color Picker & Hex Code</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                      <input type="color" id="set-brand-color" value="${currentBrandColor}" style="width: 48px; height: 40px; padding: 2px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); cursor: pointer;">
-                      <input type="text" id="set-brand-color-text" class="form-control" value="${currentBrandColor}" placeholder="#2563eb" style="width: 130px; font-family: var(--font-mono); font-weight: 700; text-transform: uppercase;">
-                    </div>
+                <!-- Color 2: Table & Highlight Accent -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13px;">2. Table & Highlights Accent</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Table header line, amount due badge, status badge</div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="color" id="set-color-accent" value="${currentAccentColor}" style="width: 38px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-strong);">
+                    <input type="text" id="set-color-accent-text" class="form-control" value="${currentAccentColor}" style="width: 95px; font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
+                  </div>
+                </div>
+
+                <!-- Color 3: Header Banner Fill (Bold template) -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13px;">3. Header Banner Background</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Banner background for Bold and Classic templates</div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="color" id="set-color-header-bg" value="${currentHeaderBg}" style="width: 38px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-strong);">
+                    <input type="text" id="set-color-header-bg-text" class="form-control" value="${currentHeaderBg}" style="width: 95px; font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
+                  </div>
+                </div>
+
+                <!-- Color 4: Body & Text -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13px;">4. Body & Item Text Color</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Line item descriptions, addresses, paragraph text</div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="color" id="set-color-body" value="${currentBodyColor}" style="width: 38px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-strong);">
+                    <input type="text" id="set-color-body-text" class="form-control" value="${currentBodyColor}" style="width: 95px; font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
+                  </div>
+                </div>
+
+                <!-- Color 5: Footer / Notes Box Background -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 13px;">5. Footer & Notes Box Background</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">Background fill for notes and bank payment box</div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="color" id="set-color-footer-bg" value="${currentFooterBg}" style="width: 38px; height: 32px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border-strong);">
+                    <input type="text" id="set-color-footer-bg-text" class="form-control" value="${currentFooterBg}" style="width: 95px; font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
                   </div>
                 </div>
               </div>
@@ -302,9 +367,9 @@ export const SettingsView = {
                   </div>
                 </div>
 
-                <div style="margin-top: 14px;">
-                  <button type="button" id="btn-save-branding" class="btn btn-primary">
-                    ${getIcon('check')} Save Branding Settings
+                <div style="margin-top: 12px;">
+                  <button type="button" id="btn-save-branding" class="btn btn-primary" style="width: 100%;">
+                    ${getIcon('check')} Save Multi-Color Palette & Branding
                   </button>
                 </div>
               </div>
@@ -312,143 +377,136 @@ export const SettingsView = {
 
             <!-- Live Mini Preview Column -->
             <div>
-              <div class="card" style="position: sticky; top: 80px; padding: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                  <h3 style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
-                    Live Branding Preview
-                  </h3>
-                  <span id="preview-color-pill" style="font-size: 11px; font-weight: 700; color: #ffffff; background: ${currentBrandColor}; padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
-                    ${currentBrandColor}
-                  </span>
+              <div class="card" style="position: sticky; top: 20px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                  <h3 style="font-size: 13px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Live Document Preview</h3>
                 </div>
 
-                <!-- Mini Invoice Sheet Card -->
-                <div id="mini-invoice-preview" style="background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); font-family: ${currentBrandFont}, sans-serif; font-size: 11px; color: #1e293b;">
-                  
-                  <div style="border-top: 4px solid ${currentBrandColor}; margin: -18px -18px 14px -18px; border-radius: 8px 8px 0 0;"></div>
-
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                <!-- Scaled Down Document Card -->
+                <div id="mini-invoice-preview" style="
+                  background: #ffffff;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 8px;
+                  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+                  padding: 20px;
+                  font-family: '${currentBrandFont}', sans-serif;
+                  font-size: 11.5px;
+                  color: ${currentBodyColor};
+                ">
+                  <!-- Header -->
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid ${currentAccentColor}; padding-bottom: 12px;">
                     <div>
-                      ${business.logo ? `<img src="${business.logo}" style="max-height: 28px; max-width: 100px; object-fit: contain; margin-bottom: 4px;" alt="Logo">` : ''}
-                      <div style="font-weight: 800; font-size: 12px; color: #0f172a;">${business.name || 'Acme Studio LLC'}</div>
-                      <div style="color: #64748b; font-size: 9.5px;">billing@yourcompany.com</div>
+                      <div id="mini-biz-name" style="font-size: 14px; font-weight: 800; color: ${currentBrandColor};">${business.name || 'Acme Studio LLC'}</div>
+                      <div style="font-size: 10px; color: #64748b;">${business.tagline || 'Design & Engineering'}</div>
                     </div>
                     <div style="text-align: right;">
                       <div id="mini-doc-title" style="font-size: 16px; font-weight: 900; color: ${currentBrandColor};">INVOICE</div>
-                      <div style="font-weight: 700; color: #334155; font-size: 10px;">INV-0042</div>
+                      <div style="font-size: 10px; font-weight: 700; color: #64748b;"># INV-0042</div>
                     </div>
                   </div>
 
-                  <div style="background: #f8fafc; border-radius: 4px; padding: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; font-size: 9.5px;">
+                  <!-- Details -->
+                  <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 14px;">
                     <div>
-                      <span style="color: #64748b; font-weight: 600;">Billed To:</span>
-                      <div style="font-weight: 700; color: #0f172a;">TechCorp International</div>
+                      <div style="font-weight: 700; color: #64748b; text-transform: uppercase;">Billed To:</div>
+                      <div style="font-weight: 700; color: #0f172a;">Global Enterprise Inc.</div>
                     </div>
                     <div style="text-align: right;">
-                      <span style="color: #64748b; font-weight: 600;">Due Date:</span>
-                      <div style="font-weight: 700; color: #0f172a;">In 14 Days</div>
+                      <div><span style="color:#64748b;">Due Date:</span> <strong>30 Days</strong></div>
                     </div>
                   </div>
 
-                  <div style="border-bottom: 2px solid ${currentBrandColor}; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: 800; font-size: 9.5px; color: #475569;">
-                    <span>ITEM</span>
-                    <span>TOTAL</span>
-                  </div>
-
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                    <div>
-                      <span style="font-weight: 600; color: #0f172a;">Brand & Web Design</span>
-                      <div style="font-size: 8.5px; color: #64748b;">1 × $2,500.00</div>
-                    </div>
-                    <span style="font-weight: 700; color: #0f172a;">$2,500.00</span>
-                  </div>
-
-                  <div style="border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 3px; font-size: 10px;">
-                    <div style="display: flex; justify-content: space-between; color: #64748b;">
-                      <span>Subtotal:</span>
-                      <span>$2,500.00</span>
-                    </div>
-                    <div id="mini-amount-due-row" style="display: flex; justify-content: space-between; font-weight: 800; color: ${currentBrandColor}; background: #eff6ff; padding: 4px 6px; border-radius: 4px; font-size: 11px;">
-                      <span>Amount Due:</span>
-                      <span>$2,500.00</span>
+                  <!-- Table -->
+                  <div style="border-top: 1px solid #f1f5f9; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-weight: 600;">
+                      <span>Web Platform Architecture</span>
+                      <span>$4,500.00</span>
                     </div>
                   </div>
-                </div>
 
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 12px; text-align: center;">
-                  Updates in real time as you adjust brand colors & typography.
+                  <!-- Totals & Notes -->
+                  <div style="display: flex; justify-content: space-between; gap: 12px;">
+                    <div id="mini-notes-box" style="flex: 1; background: ${currentFooterBg}; padding: 8px; border-radius: 4px; font-size: 9.5px; border: 1px solid #f1f5f9;">
+                      <strong>Notes:</strong> Thank you for your business!
+                    </div>
+                    <div style="text-align: right; min-width: 90px;">
+                      <div style="font-size: 10px; color: #64748b;">Total Amount</div>
+                      <div id="mini-grand-total" style="font-size: 14px; font-weight: 800; color: ${currentBrandColor};">$4,500.00</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 
-        <!-- Tab 4: Account & Workspaces -->
+        <!-- Tab 4: Account & Workspaces (Organization Deletion & Management) -->
         <div id="tab-account" class="tab-pane ${this.activeTab === 'account' ? 'active' : ''}" style="${this.activeTab === 'account' ? '' : 'display: none;'}">
-          
           <div class="card" style="margin-bottom: 20px;">
-            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('user')} User Account Profile</h2>
+            <h2 class="card-title" style="margin-bottom: 18px;">${getIcon('user')} Account Profile</h2>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Full Name</label>
-                <input type="text" id="acc-user-name" class="form-control" value="${currentUser.name || ''}">
+                <label class="form-label">Your Name</label>
+                <input type="text" id="acc-user-name" class="form-control" value="${currentUser.name}">
               </div>
               <div class="form-group">
                 <label class="form-label">Email Address</label>
-                <input type="email" class="form-control" value="${currentUser.email || ''}" disabled style="background: var(--bg-app); opacity: 0.8;">
+                <input type="email" id="acc-user-email" class="form-control" value="${currentUser.email}" disabled style="background: var(--bg-surface-subtle); cursor: not-allowed;">
               </div>
             </div>
             <button type="button" id="btn-update-acc-profile" class="btn btn-secondary btn-sm">
-              ${getIcon('check')} Update Profile
+              ${getIcon('save')} Update Name
             </button>
           </div>
 
           <div class="card" style="margin-bottom: 20px;">
-            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('building')} Active Organization Workspace</h2>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Workspace Name</label>
-                <input type="text" id="acc-org-name" class="form-control" value="${currentOrg.name || ''}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h2 class="card-title" style="margin-bottom: 4px;">${getIcon('shield')} Active Workspace: "${currentOrg.name}"</h2>
+                <p style="color: var(--text-secondary); font-size: 13px;">Manage your current organization workspace name and settings.</p>
               </div>
-              <div class="form-group">
-                <label class="form-label">Workspace ID</label>
-                <input type="text" class="form-control" value="${currentOrg.id || ''}" disabled style="background: var(--bg-app); font-family: var(--font-mono); font-size: 12px;">
-              </div>
-            </div>
-            <div style="display: flex; gap: 10px;">
-              <button type="button" id="btn-update-acc-org" class="btn btn-secondary btn-sm">
-                ${getIcon('check')} Rename Workspace
-              </button>
               <button type="button" id="btn-create-new-workspace" class="btn btn-secondary btn-sm">
-                ${getIcon('plus')} New Workspace
+                ${getIcon('plus')} New Organization Workspace
               </button>
+            </div>
+
+            <div class="form-row" style="margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Rename Current Workspace</label>
+                <div style="display: flex; gap: 10px;">
+                  <input type="text" id="acc-org-name" class="form-control" value="${currentOrg.name}">
+                  <button type="button" id="btn-update-acc-org" class="btn btn-secondary" style="white-space: nowrap;">
+                    Save Name
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
+          <!-- All Organizations List -->
           <div class="card" style="margin-bottom: 20px;">
-            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('grid')} Your Workspaces (${allUserOrgs.length})</h2>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              ${allUserOrgs.map(org => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: ${org.logoColor || '#6366f1'}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">
-                      ${org.name.charAt(0).toUpperCase()}
+            <h2 class="card-title" style="margin-bottom: 14px;">🏢 Your Workspaces</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${allOrgs.map(o => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 8px; border: 1px solid ${o.id === currentOrg.id ? '#2563eb' : 'var(--border-subtle)'}; background: ${o.id === currentOrg.id ? 'rgba(37,99,235,0.04)' : 'transparent'};">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 28px; height: 28px; border-radius: 6px; background: ${o.logoColor || '#2563eb'}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">
+                      ${o.name[0].toUpperCase()}
                     </div>
                     <div>
-                      <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">
-                        ${org.name} ${org.id === currentOrg.id ? '<span class="badge badge-paid" style="margin-left: 6px; font-size: 10px;">Active</span>' : ''}
-                      </div>
-                      <div style="font-size: 11.5px; color: var(--text-muted);">
-                        Role: ${org.role || 'Owner'} • Plan: ${org.plan || 'Free'}
-                      </div>
+                      <div style="font-weight: 700; font-size: 13.5px;">${o.name}</div>
+                      <div style="font-size: 11.5px; color: var(--text-muted);">${o.role} · ${o.plan}</div>
                     </div>
                   </div>
                   <div>
-                    ${org.id !== currentOrg.id ? `
-                      <button type="button" class="btn btn-subtle btn-sm btn-switch-workspace" data-org-id="${org.id}">
+                    ${o.id === currentOrg.id ? `
+                      <span class="badge badge-paid">Active Workspace</span>
+                    ` : `
+                      <button type="button" class="btn btn-subtle btn-sm btn-switch-workspace" data-org-id="${o.id}">
                         Switch
                       </button>
-                    ` : ''}
+                    `}
                   </div>
                 </div>
               `).join('')}
@@ -459,7 +517,7 @@ export const SettingsView = {
           <div class="card" style="border-color: #fca5a5; background: #fff5f5; margin-bottom: 20px;">
             <h2 class="card-title" style="color: #b91c1c; margin-bottom: 12px;">${getIcon('alertCircle')} Danger Zone — Delete Workspace</h2>
             <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-              Deleting <strong>${currentOrg.name}</strong> will permanently erase all its invoices, quotes, customer ledger records, product catalog, and settings. This cannot be undone.
+              Deleting <strong>${currentOrg.name}</strong> will permanently erase all its invoices, quotes, customer records, catalog items, and branding. This cannot be undone.
             </p>
             <button type="button" id="btn-delete-active-org" class="btn btn-danger btn-sm">
               ${getIcon('trash')} Delete Workspace "${currentOrg.name}"
@@ -469,7 +527,7 @@ export const SettingsView = {
           <div class="card" style="border-color: #ef4444; background: #fef2f2;">
             <h2 class="card-title" style="color: #991b1b; margin-bottom: 12px;">${getIcon('trash')} Permanent Account Deletion</h2>
             <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-              Permanently close and delete your user account (<strong>${currentUser.email}</strong>) and all associated organization workspaces and data. You will be logged out immediately.
+              Permanently close and delete your account (<strong>${currentUser.email}</strong>) and all associated workspaces and data. You will be logged out immediately.
             </p>
             <button type="button" id="btn-delete-full-account" class="btn btn-danger btn-sm" style="background: #991b1b; border-color: #991b1b;">
               ${getIcon('trash')} Delete Account & All Data
@@ -482,7 +540,7 @@ export const SettingsView = {
           <div class="card" style="margin-bottom: 20px;">
             <h2 class="card-title" style="margin-bottom: 12px;">${getIcon('download')} Backup & Data Export</h2>
             <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 18px;">
-              Download a complete, portable JSON backup of all your invoices, quotes, customer directory, product catalog, and settings.
+              Download a complete, portable JSON backup of all your invoices, quotes, customers, catalog, and settings.
             </p>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
               <button type="button" id="btn-export-backup" class="btn btn-primary">
@@ -493,31 +551,6 @@ export const SettingsView = {
                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
               </label>
             </div>
-          </div>
-
-          <div class="card" style="margin-bottom: 20px;">
-            <h2 class="card-title" style="margin-bottom: 12px;">${getIcon('sparkles')} Demo & Sample Data</h2>
-            <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 18px;">
-              Load or remove realistic sample invoices, quotes, products, and customers for instant testing.
-            </p>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <button type="button" id="btn-load-demo-data" class="btn btn-subtle">
-                ${getIcon('sparkles')} Load Demo Data
-              </button>
-              <button type="button" id="btn-clear-demo-data" class="btn btn-subtle" style="color: #ea580c;">
-                ${getIcon('trash')} Remove Demo Data Only
-              </button>
-            </div>
-          </div>
-
-          <div class="card" style="border-color: #fca5a5; background: #fff5f5;">
-            <h2 class="card-title" style="color: #b91c1c; margin-bottom: 8px;">${getIcon('alertCircle')} Factory Reset Current Workspace</h2>
-            <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px;">
-              Permanently clear all document and customer records in this workspace and reset to a blank state.
-            </p>
-            <button type="button" id="btn-factory-reset" class="btn btn-danger btn-sm">
-              ${getIcon('trash')} Clear All Workspace Data
-            </button>
           </div>
         </div>
       </div>
@@ -536,66 +569,50 @@ export const SettingsView = {
     });
 
     // Helper: update live mini preview
-    const updateMiniPreview = (color, font) => {
+    const updateMiniPreview = () => {
+      const headingColor = this.container.querySelector('#set-color-heading')?.value || '#2563eb';
+      const accentColor = this.container.querySelector('#set-color-accent')?.value || '#3b82f6';
+      const bodyColor = this.container.querySelector('#set-color-body')?.value || '#1e293b';
+      const footerBg = this.container.querySelector('#set-color-footer-bg')?.value || '#f8fafc';
+      const font = this.container.querySelector('#set-brand-font')?.value || 'Inter';
+
       const miniPreview = this.container.querySelector('#mini-invoice-preview');
       const miniDocTitle = this.container.querySelector('#mini-doc-title');
-      const miniAmountDue = this.container.querySelector('#mini-amount-due-row');
-      const colorPill = this.container.querySelector('#preview-color-pill');
+      const miniBizName = this.container.querySelector('#mini-biz-name');
+      const miniGrandTotal = this.container.querySelector('#mini-grand-total');
+      const miniNotesBox = this.container.querySelector('#mini-notes-box');
 
-      if (color) {
-        if (miniDocTitle) miniDocTitle.style.color = color;
-        if (miniAmountDue) miniAmountDue.style.color = color;
-        if (colorPill) {
-          colorPill.style.background = color;
-          colorPill.textContent = color;
-        }
-      }
-      if (font && miniPreview) {
+      if (miniBizName) miniBizName.style.color = headingColor;
+      if (miniDocTitle) miniDocTitle.style.color = headingColor;
+      if (miniGrandTotal) miniGrandTotal.style.color = headingColor;
+      if (miniNotesBox) miniNotesBox.style.background = footerBg;
+      if (miniPreview) {
         miniPreview.style.fontFamily = `"${font}", sans-serif`;
+        miniPreview.style.color = bodyColor;
       }
     };
 
-    // Color swatches click
-    this.container.querySelectorAll('.btn-color-swatch').forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        const color = swatch.dataset.color;
-        const colorPicker = this.container.querySelector('#set-brand-color');
-        const colorText = this.container.querySelector('#set-brand-color-text');
-        if (colorPicker) colorPicker.value = color;
-        if (colorText) colorText.value = color;
-
-        this.container.querySelectorAll('.btn-color-swatch').forEach(s => {
-          s.style.borderColor = s.dataset.color === color ? '#0f172a' : 'transparent';
+    // Color inputs bidirectional syncing
+    ['heading', 'accent', 'header-bg', 'body', 'footer-bg'].forEach(slot => {
+      const picker = this.container.querySelector(`#set-color-${slot}`);
+      const text = this.container.querySelector(`#set-color-${slot}-text`);
+      if (picker && text) {
+        picker.addEventListener('input', (e) => {
+          text.value = e.target.value;
+          updateMiniPreview();
         });
-
-        updateMiniPreview(color);
-      });
+        text.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            picker.value = val;
+            updateMiniPreview();
+          }
+        });
+      }
     });
 
-    // Brand color input & text sync
-    const brandColorInput = this.container.querySelector('#set-brand-color');
-    const brandColorText = this.container.querySelector('#set-brand-color-text');
-    if (brandColorInput && brandColorText) {
-      brandColorInput.addEventListener('input', (e) => {
-        brandColorText.value = e.target.value;
-        updateMiniPreview(e.target.value);
-      });
-      brandColorText.addEventListener('input', (e) => {
-        const val = e.target.value;
-        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-          brandColorInput.value = val;
-          updateMiniPreview(val);
-        }
-      });
-    }
-
-    // Font family change
-    const fontSelect = this.container.querySelector('#set-brand-font');
-    if (fontSelect) {
-      fontSelect.addEventListener('change', (e) => {
-        updateMiniPreview(null, e.target.value);
-      });
-    }
+    // Font select change
+    this.container.querySelector('#set-brand-font')?.addEventListener('change', updateMiniPreview);
 
     // Logo upload
     const logoInput = this.container.querySelector('#logo-file-input');
@@ -630,20 +647,29 @@ export const SettingsView = {
 
     // Dedicated Save Branding Button
     this.container.querySelector('#btn-save-branding')?.addEventListener('click', () => {
-      const brandColor = this.container.querySelector('#set-brand-color')?.value || '#2563eb';
-      const brandFont = this.container.querySelector('#set-brand-font')?.value || 'Inter';
-      const defaultTemplate = this.container.querySelector('#set-default-template')?.value || 'modern';
+      const brandHeadingColor = this.container.querySelector('#set-color-heading')?.value || '#2563eb';
+      const brandAccentColor  = this.container.querySelector('#set-color-accent')?.value || '#3b82f6';
+      const brandHeaderBg     = this.container.querySelector('#set-color-header-bg')?.value || '#0f172a';
+      const brandBodyColor    = this.container.querySelector('#set-color-body')?.value || '#1e293b';
+      const brandFooterBg     = this.container.querySelector('#set-color-footer-bg')?.value || '#f8fafc';
+      const brandFont         = this.container.querySelector('#set-brand-font')?.value || 'Inter';
+      const defaultTemplate   = this.container.querySelector('#set-default-template')?.value || 'modern';
 
       SettingsRepo.save({
-        brandColor,
+        brandColor: brandHeadingColor,
+        brandHeadingColor,
+        brandAccentColor,
+        brandHeaderBg,
+        brandBodyColor,
+        brandFooterBg,
         brandFont,
         defaultTemplate
       });
 
-      window.app.showToast('Branding Saved', 'Logo, colors, and typography preferences applied to all documents.', 'success');
+      window.app.showToast('Branding Saved', 'Multi-color palette and typography applied to all documents.', 'success');
     });
 
-    // Update User Profile
+    // Update Profile Name
     this.container.querySelector('#btn-update-acc-profile')?.addEventListener('click', () => {
       const name = this.container.querySelector('#acc-user-name')?.value;
       if (name) {
@@ -653,7 +679,7 @@ export const SettingsView = {
       }
     });
 
-    // Rename Active Org
+    // Rename Workspace
     this.container.querySelector('#btn-update-acc-org')?.addEventListener('click', () => {
       const name = this.container.querySelector('#acc-org-name')?.value;
       if (name) {
@@ -701,7 +727,7 @@ export const SettingsView = {
           window.app.showToast('Error', res.error, 'error');
         }
       } else if (confirmPrompt !== null) {
-        window.app.showToast('Cancelled', 'Workspace deletion was cancelled (confirmation mismatch).', 'info');
+        window.app.showToast('Cancelled', 'Workspace deletion was cancelled.', 'info');
       }
     });
 
@@ -713,7 +739,7 @@ export const SettingsView = {
         window.app.showToast('Account Deleted', 'Your account and all associated data have been permanently erased.', 'info');
         window.location.href = 'landing.html';
       } else if (confirmPrompt !== null) {
-        window.app.showToast('Cancelled', 'Account deletion cancelled (confirmation mismatch).', 'info');
+        window.app.showToast('Cancelled', 'Account deletion cancelled.', 'info');
       }
     });
 
@@ -727,11 +753,14 @@ export const SettingsView = {
         email: this.container.querySelector('#biz-email')?.value || '',
         phone: this.container.querySelector('#biz-phone')?.value || '',
         website: this.container.querySelector('#biz-website')?.value || '',
+        twitter: this.container.querySelector('#biz-twitter')?.value || '',
+        linkedin: this.container.querySelector('#biz-linkedin')?.value || '',
+        instagram: this.container.querySelector('#biz-instagram')?.value || '',
+        facebook: this.container.querySelector('#biz-facebook')?.value || '',
         address: this.container.querySelector('#biz-address')?.value || '',
         paymentInfo: this.container.querySelector('#biz-payment-info')?.value || '',
         taxNumber: this.container.querySelector('#biz-tax-number')?.value || '',
         regNumber: this.container.querySelector('#biz-reg-number')?.value || '',
-        footerNotes: this.container.querySelector('#set-footer-notes')?.value || '',
         logo: settings.business?.logo || ''
       };
 
@@ -743,66 +772,42 @@ export const SettingsView = {
         quoteNextNum: parseInt(this.container.querySelector('#set-quo-counter')?.value, 10) || 1,
         currency: this.container.querySelector('#set-currency')?.value || 'USD',
         defaultPaymentTerms: this.container.querySelector('#set-payment-terms')?.value || '14',
-        taxName: this.container.querySelector('#set-tax-name')?.value || 'Sales Tax',
-        taxRate: parseFloat(this.container.querySelector('#set-tax-rate')?.value) || 0,
-        taxMode: this.container.querySelector('#set-tax-mode')?.value || 'exclusive',
+        defaultInvoiceNotes: this.container.querySelector('#set-default-inv-notes')?.value || '',
+        defaultQuoteNotes: this.container.querySelector('#set-default-quo-notes')?.value || '',
         defaultTemplate: this.container.querySelector('#set-default-template')?.value || 'modern',
-        brandColor: this.container.querySelector('#set-brand-color')?.value || '#2563eb',
+        brandColor: this.container.querySelector('#set-color-heading')?.value || '#2563eb',
+        brandHeadingColor: this.container.querySelector('#set-color-heading')?.value || '#2563eb',
+        brandAccentColor: this.container.querySelector('#set-color-accent')?.value || '#3b82f6',
+        brandHeaderBg: this.container.querySelector('#set-color-header-bg')?.value || '#0f172a',
+        brandBodyColor: this.container.querySelector('#set-color-body')?.value || '#1e293b',
+        brandFooterBg: this.container.querySelector('#set-color-footer-bg')?.value || '#f8fafc',
         brandFont: this.container.querySelector('#set-brand-font')?.value || 'Inter'
       };
 
       SettingsRepo.save(updatedSettings);
-      window.app.showToast('Settings Saved', 'Workspace configuration updated successfully.', 'success');
+      window.app.showToast('Settings Saved', 'All business, notes, and branding preferences saved.', 'success');
     });
 
-    // Export Backup
+    // Backup Export
     this.container.querySelector('#btn-export-backup')?.addEventListener('click', () => {
-      BackupManager.exportJSON();
-      window.app.showToast('Backup Exported', 'Downloaded backup JSON file.', 'success');
-    });
+      const backupData = {
+        version: '2.0.0',
+        exportedAt: new Date().toISOString(),
+        settings: SettingsRepo.get(),
+        customers: CustomerRepo.getAll(),
+        products: ProductRepo.getAll(),
+        documents: DocumentRepo.getAll()
+      };
 
-    // Import Backup
-    const importInput = this.container.querySelector('#import-file-input');
-    if (importInput) {
-      importInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          try {
-            const res = await BackupManager.importJSON(file);
-            window.app.showToast('Restore Complete', res.message, 'success');
-            this.render(this.container);
-          } catch (err) {
-            window.app.showToast('Import Failed', err.message, 'error');
-          }
-        }
-      });
-    }
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `invoicemaster_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
 
-    // Load Demo Data
-    this.container.querySelector('#btn-load-demo-data')?.addEventListener('click', () => {
-      if (confirm('Load realistic sample invoices, quotes, products, and customers into your workspace?')) {
-        DataRepo.loadDemoData();
-        window.app.showToast('Demo Data Loaded', 'Sample records populated across workspace.', 'success');
-        this.render(this.container);
-      }
-    });
-
-    // Clear Demo Data
-    this.container.querySelector('#btn-clear-demo-data')?.addEventListener('click', () => {
-      if (confirm('Remove all demo sample data while preserving your custom records?')) {
-        DataRepo.clearDemoData();
-        window.app.showToast('Demo Data Cleared', 'Sample data removed.', 'info');
-        this.render(this.container);
-      }
-    });
-
-    // Factory Reset
-    this.container.querySelector('#btn-factory-reset')?.addEventListener('click', () => {
-      if (confirm('CRITICAL WARNING: This will permanently clear all invoices, quotes, products, and clients in this workspace. Continue?')) {
-        DataRepo.resetAllData();
-        window.app.showToast('Reset Complete', 'Workspace returned to default state.', 'info');
-        window.location.hash = '#/';
-      }
+      window.app.showToast('Backup Exported', 'Workspace data downloaded.', 'success');
     });
   }
 };

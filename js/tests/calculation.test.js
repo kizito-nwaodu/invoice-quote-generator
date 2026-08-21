@@ -6,7 +6,7 @@
  */
 
 import { calculateLineItem, calculateDocument, roundToCents, toCents, fromCents } from '../engine/calculation.js';
-import { formatDocNumber } from '../engine/formatter.js';
+import { formatDocNumber, escapeHTML, sanitizeURL } from '../engine/formatter.js';
 
 export function runAllTests() {
   const results = [];
@@ -241,6 +241,20 @@ export function runAllTests() {
     assert('16a. To Cents Conversion', toCents(19.99), 1999, '$19.99 converts to 1999 integer cents');
     assert('16b. From Cents Conversion', fromCents(1999), 19.99, '1999 cents converts back to $19.99');
     assert('16c. Epsilon Rounding on Half Cents', roundToCents(10.005), 10.01, '$10.005 rounds deterministically to $10.01');
+  }
+
+  // 17. Security & XSS Sanitization Tests
+  {
+    const xssPayload = '<script>alert("xss")</script>';
+    const escaped = escapeHTML(xssPayload);
+    assert('17a. XSS Script Tag Escaped', escaped, '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;', 'All script tags and quotes safely converted to HTML entities');
+
+    const unsafeUrl = 'javascript:alert(document.cookie)';
+    const sanitizedUrl = sanitizeURL(unsafeUrl);
+    assert('17b. Unsafe Javascript URI Blocked', sanitizedUrl, '', 'javascript: URI protocol neutralized to empty string');
+
+    const safeUrl = 'https://acmestudio.com/portfolio';
+    assert('17c. Valid HTTPS URL Allowed', sanitizeURL(safeUrl), 'https://acmestudio.com/portfolio', 'Legitimate HTTPS links preserved');
   }
 
   const passedCount = results.filter(r => r.passed).length;

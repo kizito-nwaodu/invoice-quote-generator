@@ -1,19 +1,23 @@
 /**
  * Interactive Document Preview & Export View
- * Full-page high-fidelity renderer with 4 design templates, brand customization, PDF export, status updater, and email sharing.
+ * Full-page high-fidelity renderer with 4 design templates, Multi-Color branding, social links, PDF export, and multi-channel sharing (WhatsApp, Email, Public Web Link).
  */
 
 import { DocumentRepo, SettingsRepo } from '../storage/repository.js';
 import { calculateDocument, calculateLineItem } from '../engine/calculation.js';
-import { formatCurrency, formatDate } from '../engine/formatter.js';
+import { formatCurrency, formatDate, escapeHTML, sanitizeURL } from '../engine/formatter.js';
 import { PDFExport } from '../export/pdf.js';
 import { getIcon } from '../../assets/icons.js';
 
 export const PreviewView = {
   doc: null,
   selectedTemplate: 'modern',
-  brandColor: null,
-  brandFont: null,
+  brandHeadingColor: '#2563eb',
+  brandAccentColor: '#3b82f6',
+  brandHeaderBg: '#0f172a',
+  brandBodyColor: '#1e293b',
+  brandFooterBg: '#f8fafc',
+  brandFont: 'Inter',
 
   render(container, docId) {
     this.container = container;
@@ -34,7 +38,11 @@ export const PreviewView = {
     const settings = SettingsRepo.get();
     const business = settings.business || {};
     this.selectedTemplate = this.doc.template || settings.defaultTemplate || 'modern';
-    this.brandColor = this.doc.brandColor || settings.brandColor || '#2563eb';
+    this.brandHeadingColor = this.doc.brandHeadingColor || settings.brandHeadingColor || settings.brandColor || '#2563eb';
+    this.brandAccentColor = this.doc.brandAccentColor || settings.brandAccentColor || '#3b82f6';
+    this.brandHeaderBg = this.doc.brandHeaderBg || settings.brandHeaderBg || '#0f172a';
+    this.brandBodyColor = this.doc.brandBodyColor || settings.brandBodyColor || '#1e293b';
+    this.brandFooterBg = this.doc.brandFooterBg || settings.brandFooterBg || '#f8fafc';
     this.brandFont = settings.brandFont || 'Inter';
 
     const isInvoice = this.doc.type === 'invoice';
@@ -47,15 +55,25 @@ export const PreviewView = {
     else if (this.doc.status === 'Overdue') statusClass = 'badge-overdue';
     else if (this.doc.status === 'Converted') statusClass = 'badge-converted';
 
+    // Social Links
+    const socialLinks = [];
+    if (business.website) socialLinks.push(`<a class="doc-social-link" href="${sanitizeURL(business.website)}" target="_blank" rel="noopener">🌐 ${escapeHTML(business.website.replace(/^https?:\/\//, ''))}</a>`);
+    if (business.twitter) socialLinks.push(`<a class="doc-social-link" href="https://x.com/${escapeHTML(business.twitter.replace('@', ''))}" target="_blank" rel="noopener">𝕏 @${escapeHTML(business.twitter.replace('@', ''))}</a>`);
+    if (business.linkedin) socialLinks.push(`<a class="doc-social-link" href="${sanitizeURL(business.linkedin)}" target="_blank" rel="noopener">💼 LinkedIn</a>`);
+    if (business.instagram) socialLinks.push(`<a class="doc-social-link" href="https://instagram.com/${escapeHTML(business.instagram.replace('@', ''))}" target="_blank" rel="noopener">📸 @${escapeHTML(business.instagram.replace('@', ''))}</a>`);
+    if (business.facebook) socialLinks.push(`<a class="doc-social-link" href="${sanitizeURL(business.facebook)}" target="_blank" rel="noopener">📘 Facebook</a>`);
+
+    const socialBarHTML = socialLinks.length ? `<div class="doc-social-bar">${socialLinks.join('')}</div>` : '';
+
     container.innerHTML = `
       <div class="view-header no-print">
         <div>
           <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
             <a href="#/documents" class="btn btn-subtle btn-sm">${getIcon('arrowLeft')} Back</a>
-            <span class="badge ${statusClass}">${this.doc.status}</span>
+            <span class="badge ${statusClass}">${escapeHTML(this.doc.status)}</span>
           </div>
-          <h1 class="view-title">${this.doc.number}</h1>
-          <p class="view-subtitle">${isInvoice ? 'Invoice' : 'Quote'} for <strong>${this.doc.customer?.name || 'Customer'}</strong></p>
+          <h1 class="view-title">${escapeHTML(this.doc.number)}</h1>
+          <p class="view-subtitle">${isInvoice ? 'Invoice' : 'Quote'} for <strong>${escapeHTML(this.doc.customer?.name || 'Customer')}</strong></p>
         </div>
 
         <div class="view-actions">
@@ -72,8 +90,8 @@ export const PreviewView = {
               ${getIcon('creditCard')} Record Payment
             </button>
           ` : ''}
-          <button id="btn-preview-email" class="btn btn-secondary btn-sm">
-            ${getIcon('mail')} Send / Share
+          <button id="btn-preview-share" class="btn btn-secondary btn-sm" style="color: #2563eb; font-weight: 700;">
+            ${getIcon('share')} Share & Send
           </button>
           <button id="btn-preview-download-pdf" class="btn btn-primary btn-sm">
             ${getIcon('download')} Download PDF
@@ -81,33 +99,40 @@ export const PreviewView = {
         </div>
       </div>
 
-      <!-- Action & Template Control Bar -->
-      <div class="preview-action-bar no-print">
-        <div class="preview-options">
-          <label class="form-label" style="margin-bottom: 0; font-size: 12px; font-weight: 700;">Template:</label>
-          <div class="template-chips">
-            <button class="template-chip ${this.selectedTemplate === 'modern' ? 'active' : ''}" data-template="modern">
-              Modern
-            </button>
-            <button class="template-chip ${this.selectedTemplate === 'classic' ? 'active' : ''}" data-template="classic">
-              Classic
-            </button>
-            <button class="template-chip ${this.selectedTemplate === 'minimal' ? 'active' : ''}" data-template="minimal">
-              Minimal
-            </button>
-            <button class="template-chip ${this.selectedTemplate === 'bold' ? 'active' : ''}" data-template="bold">
-              Bold Studio
-            </button>
+      <!-- Action & Multi-Color Brand Control Bar -->
+      <div class="preview-action-bar no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 20px;">
+        <div class="preview-options" style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label class="form-label" style="margin-bottom: 0; font-size: 12px; font-weight: 700;">Template:</label>
+            <div class="template-chips">
+              <button class="template-chip ${this.selectedTemplate === 'modern' ? 'active' : ''}" data-template="modern">Modern</button>
+              <button class="template-chip ${this.selectedTemplate === 'classic' ? 'active' : ''}" data-template="classic">Classic</button>
+              <button class="template-chip ${this.selectedTemplate === 'minimal' ? 'active' : ''}" data-template="minimal">Minimal</button>
+              <button class="template-chip ${this.selectedTemplate === 'bold' ? 'active' : ''}" data-template="bold">Bold</button>
+            </div>
           </div>
 
-          <div style="height: 20px; width: 1px; background: var(--border-subtle); margin: 0 4px;"></div>
+          <div style="height: 20px; width: 1px; background: var(--border-subtle);"></div>
 
-          <!-- Color Customizer -->
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label class="form-label" style="margin-bottom: 0; font-size: 12px; font-weight: 700;">Color:</label>
-            <input type="color" id="preview-brand-color-picker" value="${this.brandColor}" style="width: 30px; height: 28px; padding: 1px; border-radius: 4px; border: 1px solid var(--border-strong); cursor: pointer;" title="Change document brand color">
-            <button type="button" id="btn-save-doc-branding" class="btn btn-subtle btn-sm" style="font-size: 11px; padding: 4px 8px;" title="Save as default workspace brand color">
-              ${getIcon('save')} Set as Default
+          <!-- Multi-Color Brand Mixing Controls -->
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 5px;" title="Heading & Title Color">
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Header:</span>
+              <input type="color" id="preview-color-heading" value="${this.brandHeadingColor}" style="width: 26px; height: 24px; padding: 0; border: 1px solid var(--border-strong); border-radius: 4px; cursor: pointer;">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;" title="Table & Highlight Accent Color">
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Accent:</span>
+              <input type="color" id="preview-color-accent" value="${this.brandAccentColor}" style="width: 26px; height: 24px; padding: 0; border: 1px solid var(--border-strong); border-radius: 4px; cursor: pointer;">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;" title="Document Text Color">
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--text-secondary);">Text:</span>
+              <input type="color" id="preview-color-body" value="${this.brandBodyColor}" style="width: 26px; height: 24px; padding: 0; border: 1px solid var(--border-strong); border-radius: 4px; cursor: pointer;">
+            </div>
+
+            <button type="button" id="btn-save-doc-branding" class="btn btn-subtle btn-sm" style="font-size: 11.5px; padding: 4px 8px;" title="Save these colors as your default workspace branding">
+              ${getIcon('check')} Set as Default
             </button>
           </div>
         </div>
@@ -133,10 +158,6 @@ export const PreviewView = {
             </select>
           </div>
 
-          <button id="btn-preview-copy-summary" class="btn btn-secondary btn-sm" title="Copy Text Summary to Clipboard">
-            ${getIcon('copy')} Summary
-          </button>
-
           <button id="btn-preview-duplicate" class="btn btn-secondary btn-sm" title="Duplicate Document">
             ${getIcon('copy')} Duplicate
           </button>
@@ -153,19 +174,28 @@ export const PreviewView = {
 
       <!-- Rendered Document Sheet -->
       <div class="document-sheet-wrapper">
-        <div id="invoice-paper" class="doc-paper template-${this.selectedTemplate}" style="--brand-primary: ${this.brandColor}; font-family: '${this.brandFont}', -apple-system, BlinkMacSystemFont, sans-serif;">
+        <div id="invoice-paper" class="doc-paper template-${this.selectedTemplate}" style="
+          --brand-primary: ${this.brandHeadingColor};
+          --brand-heading: ${this.brandHeadingColor};
+          --brand-accent: ${this.brandAccentColor};
+          --brand-header-bg: ${this.brandHeaderBg};
+          --brand-body-color: ${this.brandBodyColor};
+          --brand-footer-bg: ${this.brandFooterBg};
+          --brand-font: '${this.brandFont}', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: '${this.brandFont}', -apple-system, BlinkMacSystemFont, sans-serif;
+        ">
           
           ${this.selectedTemplate === 'bold' ? `
             <!-- Bold Header Banner -->
             <div class="bold-header-band">
               <div>
                 ${business.logo ? `<img src="${business.logo}" class="doc-logo-img" style="filter: brightness(0) invert(1);" alt="Logo">` : ''}
-                <div class="doc-business-name" style="color: #ffffff;">${business.name || 'Your Company Name'}</div>
-                ${business.tagline ? `<div style="font-size: 12px; opacity: 0.85; color: #ffffff;">${business.tagline}</div>` : ''}
+                <div class="doc-business-name" style="color: #ffffff;">${escapeHTML(business.name || 'Your Company Name')}</div>
+                ${business.tagline ? `<div style="font-size: 12px; opacity: 0.85; color: #ffffff;">${escapeHTML(business.tagline)}</div>` : ''}
               </div>
               <div style="text-align: right;">
                 <div class="doc-type-title">${isInvoice ? 'INVOICE' : 'QUOTE'}</div>
-                <div class="doc-number-label" style="color: #ffffff; opacity: 0.9;">${this.doc.number}</div>
+                <div class="doc-number-label" style="color: #ffffff; opacity: 0.9;"># ${escapeHTML(this.doc.number)}</div>
               </div>
             </div>
           ` : ''}
@@ -177,19 +207,19 @@ export const PreviewView = {
               <div class="doc-paper-header">
                 <div class="doc-business-info">
                   ${business.logo ? `<img src="${business.logo}" class="doc-logo-img" alt="Logo">` : ''}
-                  <div class="doc-business-name">${business.name || 'Your Business Name'}</div>
-                  ${business.tagline ? `<div style="font-size: 12px; color: #64748b;">${business.tagline}</div>` : ''}
-                  ${business.address ? `<div style="font-size: 12.5px; color: #475569; white-space: pre-line; margin-top: 4px;">${business.address}</div>` : ''}
-                  ${business.email ? `<div style="font-size: 12.5px; color: #475569;">Email: ${business.email}</div>` : ''}
-                  ${business.phone ? `<div style="font-size: 12.5px; color: #475569;">Phone: ${business.phone}</div>` : ''}
-                  ${business.taxNumber ? `<div style="font-size: 12px; color: #64748b;">Tax/VAT ID: ${business.taxNumber}</div>` : ''}
+                  <div class="doc-business-name">${escapeHTML(business.name || 'Your Business Name')}</div>
+                  ${business.tagline ? `<div style="font-size: 12px; color: #64748b;">${escapeHTML(business.tagline)}</div>` : ''}
+                  ${business.address ? `<div style="font-size: 12.5px; color: #475569; white-space: pre-line; margin-top: 4px;">${escapeHTML(business.address)}</div>` : ''}
+                  ${business.email ? `<div style="font-size: 12.5px; color: #475569;">Email: ${escapeHTML(business.email)}</div>` : ''}
+                  ${business.phone ? `<div style="font-size: 12.5px; color: #475569;">Phone: ${escapeHTML(business.phone)}</div>` : ''}
+                  ${business.taxNumber ? `<div style="font-size: 12px; color: #64748b;">Tax/VAT ID: ${escapeHTML(business.taxNumber)}</div>` : ''}
                 </div>
 
                 <div class="doc-title-block">
                   <div class="doc-type-title">${isInvoice ? 'INVOICE' : 'QUOTE'}</div>
-                  <div class="doc-number-label">${this.doc.number}</div>
+                  <div class="doc-number-label"># ${escapeHTML(this.doc.number)}</div>
                   <div style="margin-top: 4px;">
-                    <span class="badge ${statusClass}">${this.doc.status}</span>
+                    <span class="badge ${statusClass}">${escapeHTML(this.doc.status)}</span>
                   </div>
                 </div>
               </div>
@@ -197,13 +227,13 @@ export const PreviewView = {
               <!-- Bold Template Top Meta Info -->
               <div style="font-size: 12.5px; color: #475569; margin-bottom: 20px; display: flex; justify-content: space-between;">
                 <div>
-                  ${business.address ? `<div style="white-space: pre-line;">${business.address}</div>` : ''}
-                  ${business.email ? `<div>Email: ${business.email}</div>` : ''}
-                  ${business.phone ? `<div>Phone: ${business.phone}</div>` : ''}
+                  ${business.address ? `<div style="white-space: pre-line;">${escapeHTML(business.address)}</div>` : ''}
+                  ${business.email ? `<div>Email: ${escapeHTML(business.email)}</div>` : ''}
+                  ${business.phone ? `<div>Phone: ${escapeHTML(business.phone)}</div>` : ''}
                 </div>
                 <div style="text-align: right;">
-                  ${business.taxNumber ? `<div>Tax/VAT: ${business.taxNumber}</div>` : ''}
-                  ${business.regNumber ? `<div>Reg #: ${business.regNumber}</div>` : ''}
+                  ${business.taxNumber ? `<div>Tax/VAT: ${escapeHTML(business.taxNumber)}</div>` : ''}
+                  ${business.regNumber ? `<div>Reg #: ${escapeHTML(business.regNumber)}</div>` : ''}
                 </div>
               </div>
             `}
@@ -211,13 +241,12 @@ export const PreviewView = {
             <!-- Recipient and Meta Grid -->
             <div class="doc-details-grid">
               <div class="doc-bill-to">
-                <div class="doc-section-heading">BILLED TO</div>
-                <div class="doc-customer-name">${this.doc.customer?.name || 'Valued Customer'}</div>
-                ${this.doc.customer?.company ? `<div style="font-size: 13px; font-weight: 600; color: #334155;">${this.doc.customer.company}</div>` : ''}
-                ${this.doc.customer?.address ? `<div style="font-size: 12.5px; color: #475569; white-space: pre-line; margin-top: 2px;">${this.doc.customer.address}</div>` : ''}
-                ${this.doc.customer?.email ? `<div style="font-size: 12.5px; color: #475569;">${this.doc.customer.email}</div>` : ''}
-                ${this.doc.customer?.phone ? `<div style="font-size: 12.5px; color: #475569;">${this.doc.customer.phone}</div>` : ''}
-                ${this.doc.customer?.taxNumber ? `<div style="font-size: 12px; color: #64748b;">Tax/VAT ID: ${this.doc.customer.taxNumber}</div>` : ''}
+                <div class="doc-section-heading">${isInvoice ? 'BILLED TO' : 'QUOTE PREPARED FOR'}</div>
+                <div class="doc-customer-name">${escapeHTML(this.doc.customer?.name || 'Valued Customer')}</div>
+                ${this.doc.customer?.company ? `<div style="font-size: 13px; font-weight: 600; color: #334155;">${escapeHTML(this.doc.customer.company)}</div>` : ''}
+                ${this.doc.customer?.address ? `<div style="font-size: 12.5px; color: #475569; white-space: pre-line; margin-top: 2px;">${escapeHTML(this.doc.customer.address)}</div>` : ''}
+                ${this.doc.customer?.email ? `<div style="font-size: 12.5px; color: #475569;">${escapeHTML(this.doc.customer.email)}</div>` : ''}
+                ${this.doc.customer?.phone ? `<div style="font-size: 12.5px; color: #475569;">${escapeHTML(this.doc.customer.phone)}</div>` : ''}
               </div>
 
               <div class="doc-meta-table">
@@ -227,7 +256,7 @@ export const PreviewView = {
                 </div>
                 ${isInvoice ? `
                   <div class="doc-meta-row">
-                    <span class="doc-meta-label">Due Date:</span>
+                    <span class="doc-meta-label">Payment Due:</span>
                     <span class="doc-meta-val">${formatDate(this.doc.dueDate)}</span>
                   </div>
                 ` : `
@@ -239,7 +268,7 @@ export const PreviewView = {
                 ${this.doc.reference ? `
                   <div class="doc-meta-row">
                     <span class="doc-meta-label">PO / Ref #:</span>
-                    <span class="doc-meta-val">${this.doc.reference}</span>
+                    <span class="doc-meta-val">${escapeHTML(this.doc.reference)}</span>
                   </div>
                 ` : ''}
                 <div class="doc-meta-row">
@@ -263,17 +292,17 @@ export const PreviewView = {
                 </tr>
               </thead>
               <tbody>
-                ${this.doc.items.map((item, index) => {
+                ${(this.doc.items || []).map((item, index) => {
                   const lineCalc = calculateLineItem(item, this.doc.taxMode || 'exclusive');
                   return `
                     <tr>
                       <td style="text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
                       <td>
-                        <div class="doc-table-desc-title">${item.description || 'Item'}</div>
-                        ${item.notes ? `<div class="doc-table-desc-subtitle">${item.notes}</div>` : ''}
+                        <div class="doc-table-desc-title">${escapeHTML(item.description || 'Item')}</div>
+                        ${item.notes ? `<div class="doc-table-desc-subtitle">${escapeHTML(item.notes)}</div>` : ''}
                       </td>
                       <td style="text-align: right; font-weight: 600;">
-                        ${item.quantity} <span style="font-size: 11px; color: #64748b;">${item.unit || ''}</span>
+                        ${item.quantity} <span style="font-size: 11px; color: #64748b;">${escapeHTML(item.unit || '')}</span>
                       </td>
                       <td style="text-align: right;">${formatCurrency(item.unitPrice, docCurrency)}</td>
                       <td style="text-align: right; color: ${lineCalc.discountAmount > 0 ? '#16a34a' : '#64748b'};">
@@ -295,17 +324,17 @@ export const PreviewView = {
             <div class="doc-footer-grid">
               
               <div class="doc-notes-block">
-                ${business.paymentInfo ? `
-                  <div>
-                    <div class="doc-section-heading">PAYMENT INSTRUCTIONS</div>
-                    <div style="font-size: 12px; color: #475569; white-space: pre-line; line-height: 1.4;">${business.paymentInfo}</div>
+                ${this.doc.notes ? `
+                  <div class="doc-notes-card">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">NOTES & TERMS</div>
+                    <div style="font-size: 12px; color: #475569; white-space: pre-line; line-height: 1.45;">${escapeHTML(this.doc.notes)}</div>
                   </div>
                 ` : ''}
 
-                ${this.doc.notes ? `
-                  <div>
-                    <div class="doc-section-heading">NOTES & TERMS</div>
-                    <div style="font-size: 12px; color: #475569; white-space: pre-line; line-height: 1.4;">${this.doc.notes}</div>
+                ${business.paymentInfo ? `
+                  <div class="doc-notes-card" style="margin-top: 8px;">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">PAYMENT INSTRUCTIONS / BANK DETAILS</div>
+                    <div style="font-size: 11.5px; color: #475569; white-space: pre-line; line-height: 1.45; font-family: monospace;">${escapeHTML(business.paymentInfo)}</div>
                   </div>
                 ` : ''}
               </div>
@@ -358,6 +387,10 @@ export const PreviewView = {
                 ` : ''}
               </div>
             </div>
+
+            <!-- Social Media Handles Bar -->
+            ${socialBarHTML}
+
           </div>
         </div>
       </div>
@@ -372,40 +405,62 @@ export const PreviewView = {
       chip.addEventListener('click', () => {
         const template = chip.dataset.template;
         this.selectedTemplate = template;
-        
-        // Save to document
         this.doc.template = template;
         DocumentRepo.save(this.doc);
-
         this.render(this.container, this.doc.id);
       });
     });
 
-    // Brand color picker
-    const colorPicker = this.container.querySelector('#preview-brand-color-picker');
-    if (colorPicker) {
-      colorPicker.addEventListener('input', (e) => {
-        this.brandColor = e.target.value;
-        const paper = this.container.querySelector('#invoice-paper');
-        if (paper) {
-          paper.style.setProperty('--brand-primary', e.target.value);
-        }
+    // Multi-color pickers
+    const headingPicker = this.container.querySelector('#preview-color-heading');
+    const accentPicker = this.container.querySelector('#preview-color-accent');
+    const bodyPicker = this.container.querySelector('#preview-color-body');
+    const paper = this.container.querySelector('#invoice-paper');
+
+    if (headingPicker && paper) {
+      headingPicker.addEventListener('input', (e) => {
+        this.brandHeadingColor = e.target.value;
+        paper.style.setProperty('--brand-primary', e.target.value);
+        paper.style.setProperty('--brand-heading', e.target.value);
       });
-      colorPicker.addEventListener('change', (e) => {
-        this.doc.brandColor = e.target.value;
+      headingPicker.addEventListener('change', (e) => {
+        this.doc.brandHeadingColor = e.target.value;
+        DocumentRepo.save(this.doc);
+      });
+    }
+
+    if (accentPicker && paper) {
+      accentPicker.addEventListener('input', (e) => {
+        this.brandAccentColor = e.target.value;
+        paper.style.setProperty('--brand-accent', e.target.value);
+      });
+      accentPicker.addEventListener('change', (e) => {
+        this.doc.brandAccentColor = e.target.value;
+        DocumentRepo.save(this.doc);
+      });
+    }
+
+    if (bodyPicker && paper) {
+      bodyPicker.addEventListener('input', (e) => {
+        this.brandBodyColor = e.target.value;
+        paper.style.setProperty('--brand-body-color', e.target.value);
+      });
+      bodyPicker.addEventListener('change', (e) => {
+        this.doc.brandBodyColor = e.target.value;
         DocumentRepo.save(this.doc);
       });
     }
 
     // Set as Default Branding
     this.container.querySelector('#btn-save-doc-branding')?.addEventListener('click', () => {
-      if (this.brandColor) {
-        SettingsRepo.save({
-          brandColor: this.brandColor,
-          defaultTemplate: this.selectedTemplate
-        });
-        window.app.showToast('Branding Saved', `Set ${this.brandColor} and ${this.selectedTemplate} as workspace defaults.`, 'success');
-      }
+      SettingsRepo.save({
+        brandColor: this.brandHeadingColor,
+        brandHeadingColor: this.brandHeadingColor,
+        brandAccentColor: this.brandAccentColor,
+        brandBodyColor: this.brandBodyColor,
+        defaultTemplate: this.selectedTemplate
+      });
+      window.app.showToast('Branding Saved', `Saved multi-color palette as workspace defaults.`, 'success');
     });
 
     // Status change listener
@@ -438,21 +493,9 @@ export const PreviewView = {
       });
     });
 
-    // Send / Share Email Modal
-    this.container.querySelector('#btn-preview-email')?.addEventListener('click', () => {
-      window.app.showEmailModal(this.doc.id);
-    });
-
-    // Copy Summary to Clipboard
-    this.container.querySelector('#btn-preview-copy-summary')?.addEventListener('click', () => {
-      const calc = calculateDocument(this.doc, SettingsRepo.get());
-      const summaryText = `Document: ${this.doc.number}\nType: ${this.doc.type.toUpperCase()}\nCustomer: ${this.doc.customer?.name || 'Customer'}\nDate: ${formatDate(this.doc.date)}\nTotal: ${formatCurrency(calc.grandTotal, this.doc.currency)}\nBalance Due: ${formatCurrency(calc.balanceDue, this.doc.currency)}\nStatus: ${this.doc.status}`;
-      
-      navigator.clipboard.writeText(summaryText).then(() => {
-        window.app.showToast('Summary Copied', 'Invoice details copied to clipboard.', 'success');
-      }).catch(() => {
-        window.app.showToast('Copied', summaryText.replace(/\n/g, ' | '), 'info');
-      });
+    // Multi-Channel Share Modal (WhatsApp, Email, Public Web Link)
+    this.container.querySelector('#btn-preview-share')?.addEventListener('click', () => {
+      window.app.showShareModal(this.doc.id);
     });
 
     // Duplicate Document

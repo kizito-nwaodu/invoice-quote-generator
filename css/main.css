@@ -144,6 +144,20 @@ html, body {
   overflow: hidden;
 }
 
+#app.public-mode .app-sidebar,
+#app.public-mode .app-topbar {
+  display: none !important;
+}
+
+#app.public-mode .app-main {
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+
+#app.public-mode .app-viewport {
+  padding: 0 !important;
+}
+
 /* Sidebar Navigation */
 .app-sidebar {
   width: var(--sidebar-width);

@@ -61,8 +61,10 @@ export const EditorView = {
         docDiscountValue: 0,
         shippingFee: 0,
         additionalCharges: 0,
-        notes: '',
-        terms: settings.business?.footerNotes || 'Thank you for your business. Payment is due within agreed terms.',
+        notes: defaultType === 'invoice' 
+          ? (settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.')
+          : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.'),
+        terms: settings.business?.footerNotes || '',
         payments: []
       };
     }
@@ -487,6 +489,10 @@ export const EditorView = {
         const nextInfo = DocumentRepo.getNextDocNumber('invoice');
         this.doc.number = nextInfo.number;
         this.doc.dueDate = addDays(this.doc.date, 14);
+        const settings = SettingsRepo.get();
+        if (this.isNew && (!this.doc.notes || this.doc.notes === settings.defaultQuoteNotes || this.doc.notes.includes('quote'))) {
+          this.doc.notes = settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.';
+        }
         delete this.doc.expirationDate;
         this.renderForm();
       }
@@ -498,6 +504,10 @@ export const EditorView = {
         const nextInfo = DocumentRepo.getNextDocNumber('quote');
         this.doc.number = nextInfo.number;
         this.doc.expirationDate = addDays(this.doc.date, 30);
+        const settings = SettingsRepo.get();
+        if (this.isNew && (!this.doc.notes || this.doc.notes === settings.defaultInvoiceNotes || this.doc.notes.includes('remit payment'))) {
+          this.doc.notes = settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.';
+        }
         delete this.doc.dueDate;
         this.renderForm();
       }
