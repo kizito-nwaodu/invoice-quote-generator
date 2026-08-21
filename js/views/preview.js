@@ -324,12 +324,14 @@ export const PreviewView = {
             <div class="doc-footer-grid">
               
               <div class="doc-notes-block">
-                ${this.doc.notes ? `
-                  <div class="doc-notes-card">
-                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">NOTES & TERMS</div>
-                    <div style="font-size: 12px; color: #475569; white-space: pre-line; line-height: 1.45;">${escapeHTML(this.doc.notes)}</div>
+                <div class="doc-notes-card">
+                  <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                    ${isInvoice ? 'THANK YOU & PAYMENT TERMS' : 'THANK YOU & QUOTE VALIDITY'}
                   </div>
-                ` : ''}
+                  <div style="font-size: 12px; color: var(--brand-body-color, #475569); white-space: pre-line; line-height: 1.45;">
+                    ${escapeHTML(this.doc.notes || (isInvoice ? (settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.') : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.')))}
+                  </div>
+                </div>
 
                 ${business.paymentInfo ? `
                   <div class="doc-notes-card" style="margin-top: 8px;">

@@ -534,7 +534,7 @@ class App {
 
   /**
    * Comprehensive Multi-Channel Sharing Modal
-   * Supports WhatsApp, Email, Public Web Link, and direct PDF attachments.
+   * Supports WhatsApp (pick contact or direct), Email, Self-Contained Public Web Link, and PDF attachments.
    */
   showShareModal(docId) {
     const doc = DocumentRepo.getById(docId);
@@ -548,18 +548,49 @@ class App {
     const clientName = doc.customer?.name || 'Valued Client';
     const bizName = settings.business?.name || 'Our Company';
 
-    // Public link
+    // Self-contained public link with encoded document payload
+    function encodePayload(d, s) {
+      try {
+        const payload = {
+          doc: d,
+          settings: {
+            business: s.business || {},
+            brandHeadingColor: s.brandHeadingColor || s.brandColor,
+            brandAccentColor: s.brandAccentColor,
+            brandHeaderBg: s.brandHeaderBg,
+            brandBodyColor: s.brandBodyColor,
+            brandFooterBg: s.brandFooterBg,
+            brandFont: s.brandFont,
+            defaultTemplate: s.defaultTemplate,
+            defaultInvoiceNotes: s.defaultInvoiceNotes,
+            defaultQuoteNotes: s.defaultQuoteNotes,
+            currency: s.currency,
+            taxName: s.taxName
+          }
+        };
+        return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+      } catch (e) {
+        return '';
+      }
+    }
+
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const publicUrl = `${baseUrl}#/view/${doc.id}`;
+    const pData = encodePayload(doc, settings);
+    const publicUrl = `${baseUrl}#/view/${doc.id}?p=${pData}`;
 
     // Default message bodies
+    const defaultNote = isInvoice 
+      ? (settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.')
+      : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.');
+    const noteMsg = doc.notes || defaultNote;
+
     const whatsappMsg = `Hello ${clientName},\n\nHere is your ${isInvoice ? 'Invoice' : 'Quote'} *${doc.number}* from *${bizName}*.\n\n` +
       `📄 *Total Amount:* ${formatCurrency(calc.grandTotal, docCurrency)}\n` +
       (isInvoice && calc.balanceDue > 0 ? `💰 *Balance Due:* ${formatCurrency(calc.balanceDue, docCurrency)}\n` : '') +
       (isInvoice && doc.dueDate ? `📅 *Due Date:* ${formatDate(doc.dueDate)}\n` : '') +
       (!isInvoice && doc.expirationDate ? `📅 *Valid Until:* ${formatDate(doc.expirationDate)}\n` : '') +
       `\n🔗 *View & Download Document:* ${publicUrl}\n\n` +
-      (isInvoice ? (settings.defaultInvoiceNotes || 'Thank you for your business!') : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote!'));
+      noteMsg;
 
     const emailSubject = `${isInvoice ? 'Invoice' : 'Quote'} ${doc.number} from ${bizName}`;
     const emailBody = `Dear ${clientName},\n\n` +
@@ -573,7 +604,7 @@ class App {
       (isInvoice && calc.balanceDue > 0 ? `- Balance Due: ${formatCurrency(calc.balanceDue, docCurrency)}\n` : '') +
       `\nYou can view and download your official document online here:\n${publicUrl}\n\n` +
       (settings.business?.paymentInfo ? `Payment Instructions:\n${settings.business.paymentInfo}\n\n` : '') +
-      (isInvoice ? (settings.defaultInvoiceNotes || 'Thank you for your business!') : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote!')) +
+      noteMsg +
       `\n\nBest regards,\n${bizName}\n${settings.business?.email || ''}\n${settings.business?.phone || ''}`;
 
     const modalEl = document.createElement('div');
@@ -593,8 +624,8 @@ class App {
           <!-- Public Link Banner -->
           <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 200px;">
-              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #1d4ed8; letter-spacing: 0.05em; margin-bottom: 2px;">Public Client Link</div>
-              <div style="font-size: 12.5px; color: #1e3a8a; font-family: var(--font-mono); word-break: break-all;">${escapeHTML(publicUrl)}</div>
+              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #1d4ed8; letter-spacing: 0.05em; margin-bottom: 2px;">Public Client Link (Shareable Anywhere)</div>
+              <div style="font-size: 12px; color: #1e3a8a; font-family: var(--font-mono); word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(publicUrl)}</div>
             </div>
             <div style="display: flex; gap: 8px;">
               <button type="button" id="btn-copy-public-link" class="btn btn-primary btn-sm" style="background: #2563eb;">
@@ -618,16 +649,32 @@ class App {
 
           <!-- WhatsApp Pane -->
           <div id="pane-whatsapp">
-            <div class="form-group">
-              <label class="form-label">Client WhatsApp / Phone Number</label>
-              <input type="text" id="share-wa-phone" class="form-control" value="${escapeHTML(clientPhone)}" placeholder="e.g. +1234567890 (include country code)">
+            <div class="form-group" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 8px; margin-bottom: 14px;">
+              <label class="form-label" style="font-weight: 700; margin-bottom: 8px;">WhatsApp Sending Option</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input type="radio" name="wa-target-option" id="wa-opt-pick" value="pick" checked>
+                  <span><strong>Choose Contact or Group in WhatsApp</strong> (Prompt contact picker when WhatsApp opens)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input type="radio" name="wa-target-option" id="wa-opt-direct" value="direct">
+                  <span>Send directly to client's phone number</span>
+                </label>
+              </div>
             </div>
+
+            <div class="form-group" id="wa-phone-row" style="display: none;">
+              <label class="form-label">Client WhatsApp / Phone Number (with Country Code)</label>
+              <input type="text" id="share-wa-phone" class="form-control" value="${escapeHTML(clientPhone)}" placeholder="e.g. +2347068898253">
+            </div>
+
             <div class="form-group">
               <label class="form-label">WhatsApp Formatted Message</label>
               <textarea id="share-wa-msg" class="form-control" rows="6" style="font-size: 13px; line-height: 1.45; font-family: var(--font-sans);">${escapeHTML(whatsappMsg)}</textarea>
             </div>
+
             <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #475569; margin-bottom: 14px;">
-              💡 <strong>Direct File Sharing:</strong> Click <em>"Download PDF"</em> below to save the file, then attach it directly in your WhatsApp conversation.
+              💡 <strong>Attach PDF File in WhatsApp:</strong> Click <em>"Download PDF File"</em> below to save it on your device, then attach the PDF file directly in your WhatsApp conversation.
             </div>
           </div>
 
@@ -699,6 +746,16 @@ class App {
       btnSendChannel.style.borderColor = '#2563eb';
     });
 
+    // Toggle WhatsApp Phone Input visibility
+    modalEl.querySelectorAll('input[name="wa-target-option"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const phoneRow = modalEl.querySelector('#wa-phone-row');
+        if (phoneRow) {
+          phoneRow.style.display = e.target.value === 'direct' ? 'block' : 'none';
+        }
+      });
+    });
+
     // Copy public link
     modalEl.querySelector('#btn-copy-public-link')?.addEventListener('click', () => {
       navigator.clipboard.writeText(publicUrl).then(() => {
@@ -727,11 +784,14 @@ class App {
       }
 
       if (activeChannel === 'whatsapp') {
+        const isDirect = modalEl.querySelector('#wa-opt-direct')?.checked;
         const phone = (modalEl.querySelector('#share-wa-phone')?.value || '').replace(/[^\d+]/g, '');
         const msg = encodeURIComponent(modalEl.querySelector('#share-wa-msg')?.value || '');
-        const waUrl = phone 
-          ? `https://api.whatsapp.com/send?phone=${phone}&text=${msg}` 
+        
+        const waUrl = (isDirect && phone)
+          ? `https://api.whatsapp.com/send?phone=${phone}&text=${msg}`
           : `https://api.whatsapp.com/send?text=${msg}`;
+          
         window.open(waUrl, '_blank');
       } else {
         const to = encodeURIComponent(modalEl.querySelector('#share-email-to')?.value || '');

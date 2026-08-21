@@ -1,5 +1,6 @@
 /**
  * Public Client Document Viewer (Read-only view for clients via shared URL)
+ * Self-contained: reads document & branding from URL payload or local repository.
  */
 
 import { DocumentRepo, SettingsRepo } from '../storage/repository.js';
@@ -10,30 +11,73 @@ import { PDFExport } from '../export/pdf.js';
 export const PublicView = {
   render(container, docId) {
     this.container = container;
-    const doc = DocumentRepo.getById(docId);
-    const settings = SettingsRepo.get();
+
+    let doc = null;
+    let settings = null;
+
+    // 1. Try decoding document payload from URL parameter 'p' or 'data'
+    const fullHash = window.location.hash;
+    let encodedPayload = null;
+
+    if (fullHash.includes('?')) {
+      const queryStr = fullHash.split('?')[1];
+      const urlParams = new URLSearchParams(queryStr);
+      encodedPayload = urlParams.get('p') || urlParams.get('data');
+    }
+
+    if (!encodedPayload) {
+      const urlParams = new URLSearchParams(window.location.search);
+      encodedPayload = urlParams.get('p') || urlParams.get('data');
+    }
+
+    if (encodedPayload) {
+      try {
+        const json = decodeURIComponent(escape(atob(decodeURIComponent(encodedPayload))));
+        const decoded = JSON.parse(json);
+        if (decoded && decoded.doc) {
+          doc = decoded.doc;
+          settings = decoded.settings || {};
+        }
+      } catch (e) {
+        console.warn('Could not decode URL payload:', e);
+      }
+    }
+
+    // 2. Fallback to local storage (for workspace owner previewing)
+    if (!doc && docId) {
+      const cleanId = docId.split('?')[0];
+      doc = DocumentRepo.getById(cleanId);
+      settings = SettingsRepo.get();
+    }
 
     if (!doc) {
       container.innerHTML = `
         <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; font-family: var(--font-sans);">
           <div style="width: 64px; height: 64px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 16px;">⚠️</div>
           <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Document Not Found</h2>
-          <p style="color: #64748b; max-width: 420px; font-size: 14px; margin-bottom: 24px;">The invoice or quote link you opened does not exist or may have been removed by the sender.</p>
+          <p style="color: #64748b; max-width: 420px; font-size: 14px; margin-bottom: 24px;">The invoice or quote link you opened is invalid or missing payload data.</p>
           <a href="landing.html" style="padding: 10px 20px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">Return Home</a>
         </div>
       `;
       return;
     }
 
+    settings = settings || {};
     const calc = calculateDocument(doc, settings);
     const isInvoice = doc.type === 'invoice';
     const biz = settings.business || {};
-    const brandHeading = settings.brandHeadingColor || settings.brandColor || '#2563eb';
-    const brandAccent  = settings.brandAccentColor || '#3b82f6';
-    const brandHeaderBg= settings.brandHeaderBg || '#0f172a';
-    const brandBodyColor=settings.brandBodyColor || '#1e293b';
-    const brandFooterBg= settings.brandFooterBg || '#f8fafc';
+    const brandHeading = doc.brandHeadingColor || settings.brandHeadingColor || settings.brandColor || '#2563eb';
+    const brandAccent  = doc.brandAccentColor || settings.brandAccentColor || '#3b82f6';
+    const brandHeaderBg= doc.brandHeaderBg || settings.brandHeaderBg || '#0f172a';
+    const brandBodyColor=doc.brandBodyColor || settings.brandBodyColor || '#1e293b';
+    const brandFooterBg= doc.brandFooterBg || settings.brandFooterBg || '#f8fafc';
     const brandFont    = settings.brandFont || 'Inter';
+
+    // Thank You Note logic (always visible)
+    const defaultNote = isInvoice 
+      ? (settings.defaultInvoiceNotes || 'Thank you for your business! Please remit payment according to the terms above.')
+      : (settings.defaultQuoteNotes || 'Thank you for the opportunity to quote! We look forward to working with you. This estimate is valid for 30 days.');
+    const notesToShow = doc.notes || defaultNote;
 
     // Social handles
     const socialLinks = [];
@@ -46,7 +90,7 @@ export const PublicView = {
     const socialBarHTML = socialLinks.length ? `<div class="doc-social-bar">${socialLinks.join('')}</div>` : '';
 
     container.innerHTML = `
-      <div style="min-height: 100vh; background: #f8fafc; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; font-family: ${brandFont}, -apple-system, BlinkMacSystemFont, sans-serif;">
+      <div style="min-height: 100vh; background: #f8fafc; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; font-family: '${brandFont}', -apple-system, BlinkMacSystemFont, sans-serif;">
         
         <!-- Public Client Header Bar -->
         <div style="width: 100%; max-width: 820px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #ffffff; padding: 14px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; flex-wrap: wrap; gap: 12px;">
@@ -69,7 +113,8 @@ export const PublicView = {
         </div>
 
         <!-- Rendered Document Paper -->
-        <div id="invoice-paper" class="doc-paper template-${settings.template || 'modern'}" style="
+        <div id="invoice-paper" class="doc-paper template-${doc.template || settings.defaultTemplate || 'modern'}" style="
+          --brand-primary: ${brandHeading};
           --brand-heading: ${brandHeading};
           --brand-accent: ${brandAccent};
           --brand-header-bg: ${brandHeaderBg};
@@ -81,13 +126,13 @@ export const PublicView = {
           <!-- Header -->
           <div class="doc-paper-header">
             <div class="doc-business-info">
-              ${settings.logoDataUrl ? `<img src="${settings.logoDataUrl}" alt="${escapeHTML(biz.name || 'Logo')}" class="doc-logo-img">` : ''}
+              ${biz.logo ? `<img src="${biz.logo}" alt="${escapeHTML(biz.name || 'Logo')}" class="doc-logo-img">` : ''}
               <div class="doc-business-name">${escapeHTML(biz.name || 'Your Company Name')}</div>
               <div style="font-size: 12px; color: #64748b; line-height: 1.4;">
                 ${biz.address ? `${escapeHTML(biz.address)}<br>` : ''}
                 ${biz.email ? `Email: ${escapeHTML(biz.email)}<br>` : ''}
                 ${biz.phone ? `Phone: ${escapeHTML(biz.phone)}<br>` : ''}
-                ${biz.taxId ? `Tax / VAT ID: ${escapeHTML(biz.taxId)}` : ''}
+                ${biz.taxNumber ? `Tax / VAT ID: ${escapeHTML(biz.taxNumber)}` : ''}
               </div>
             </div>
 
@@ -101,7 +146,7 @@ export const PublicView = {
           <div class="doc-details-grid">
             <div class="doc-bill-to">
               <div class="doc-section-heading">${isInvoice ? 'Billed To' : 'Quote Prepared For'}</div>
-              <div class="doc-customer-name">${escapeHTML(doc.customer?.name || 'Customer Name')}</div>
+              <div class="doc-customer-name">${escapeHTML(doc.customer?.name || 'Valued Client')}</div>
               <div style="font-size: 12.5px; color: #475569; line-height: 1.4;">
                 ${doc.customer?.company ? `<strong>${escapeHTML(doc.customer.company)}</strong><br>` : ''}
                 ${doc.customer?.address ? `${escapeHTML(doc.customer.address)}<br>` : ''}
@@ -117,12 +162,12 @@ export const PublicView = {
               </div>
               <div class="doc-meta-row">
                 <span class="doc-meta-label">${isInvoice ? 'Payment Due:' : 'Valid Until:'}</span>
-                <span class="doc-meta-val">${formatDate(doc.dueDate, 'medium')}</span>
+                <span class="doc-meta-val">${formatDate(doc.dueDate || doc.expirationDate, 'medium')}</span>
               </div>
-              ${doc.poNumber ? `
+              ${doc.reference ? `
                 <div class="doc-meta-row">
-                  <span class="doc-meta-label">P.O. Number:</span>
-                  <span class="doc-meta-val">${escapeHTML(doc.poNumber)}</span>
+                  <span class="doc-meta-label">PO / Ref #:</span>
+                  <span class="doc-meta-val">${escapeHTML(doc.reference)}</span>
                 </div>
               ` : ''}
             </div>
@@ -139,15 +184,15 @@ export const PublicView = {
               </tr>
             </thead>
             <tbody>
-              ${(calc.items || []).map(item => `
+              ${(doc.items || []).map(item => `
                 <tr>
                   <td>
                     <div class="doc-table-desc-title">${escapeHTML(item.description || 'Service / Product')}</div>
-                    ${item.details ? `<div class="doc-table-desc-subtitle">${escapeHTML(item.details)}</div>` : ''}
+                    ${item.notes ? `<div class="doc-table-desc-subtitle">${escapeHTML(item.notes)}</div>` : ''}
                   </td>
-                  <td style="text-align: right;">${item.quantity}</td>
+                  <td style="text-align: right;">${item.quantity} ${escapeHTML(item.unit || '')}</td>
                   <td style="text-align: right;">${formatCurrency(item.unitPrice, doc.currency)}</td>
-                  <td style="text-align: right; font-weight: 700;">${formatCurrency(item.lineTotal, doc.currency)}</td>
+                  <td style="text-align: right; font-weight: 700;">${formatCurrency(item.quantity * item.unitPrice, doc.currency)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -156,17 +201,18 @@ export const PublicView = {
           <!-- Footer & Totals -->
           <div class="doc-footer-grid">
             <div class="doc-notes-block">
-              ${doc.notes ? `
-                <div class="doc-notes-card">
-                  <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Notes & Instructions</div>
-                  <div style="white-space: pre-wrap; line-height: 1.45;">${escapeHTML(doc.notes)}</div>
+              <!-- Thank You & Terms Card (Always visible) -->
+              <div class="doc-notes-card">
+                <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  ${isInvoice ? 'Thank You & Payment Terms' : 'Thank You & Quote Validity'}
                 </div>
-              ` : ''}
+                <div style="white-space: pre-wrap; line-height: 1.45; font-size: 12px; color: var(--brand-body-color, #475569);">${escapeHTML(notesToShow)}</div>
+              </div>
 
-              ${biz.bankingDetails ? `
+              ${biz.paymentInfo ? `
                 <div class="doc-notes-card" style="margin-top: 8px;">
                   <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Payment Instructions / Bank Details</div>
-                  <div style="white-space: pre-wrap; font-family: monospace; font-size: 11.5px; line-height: 1.45;">${escapeHTML(biz.bankingDetails)}</div>
+                  <div style="white-space: pre-wrap; font-family: monospace; font-size: 11.5px; line-height: 1.45;">${escapeHTML(biz.paymentInfo)}</div>
                 </div>
               ` : ''}
             </div>
@@ -176,26 +222,26 @@ export const PublicView = {
                 <span>Subtotal:</span>
                 <span style="font-weight: 600;">${formatCurrency(calc.subtotal, doc.currency)}</span>
               </div>
-              ${calc.docDiscountAmount > 0 ? `
+              ${calc.totalDiscount > 0 ? `
                 <div class="doc-total-line" style="color: #16a34a;">
                   <span>Discount:</span>
-                  <span>-${formatCurrency(calc.docDiscountAmount, doc.currency)}</span>
+                  <span>-${formatCurrency(calc.totalDiscount, doc.currency)}</span>
                 </div>
               ` : ''}
-              ${calc.taxAmount > 0 ? `
+              ${calc.totalTax > 0 ? `
                 <div class="doc-total-line">
-                  <span>Tax (${calc.taxRate}%):</span>
-                  <span>${formatCurrency(calc.taxAmount, doc.currency)}</span>
+                  <span>${settings.taxName || 'Tax'}:</span>
+                  <span>${formatCurrency(calc.totalTax, doc.currency)}</span>
                 </div>
               ` : ''}
-              ${calc.shippingFee > 0 ? `
+              ${calc.shipping > 0 ? `
                 <div class="doc-total-line">
                   <span>Shipping:</span>
-                  <span>${formatCurrency(calc.shippingFee, doc.currency)}</span>
+                  <span>${formatCurrency(calc.shipping, doc.currency)}</span>
                 </div>
               ` : ''}
               <div class="doc-total-line grand-total">
-                <span>Total:</span>
+                <span>Total Amount:</span>
                 <span>${formatCurrency(calc.grandTotal, doc.currency)}</span>
               </div>
               ${isInvoice && calc.amountPaid > 0 ? `
