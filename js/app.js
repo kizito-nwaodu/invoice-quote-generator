@@ -132,12 +132,18 @@ class App {
     const mobileBtn = document.getElementById('btn-mobile-menu');
     const sidebar = document.querySelector('.app-sidebar');
     mobileBtn?.addEventListener('click', () => {
-      sidebar?.classList.toggle('open');
+      if (window.innerWidth <= 900) {
+        sidebar?.classList.toggle('open');
+      } else {
+        sidebar?.classList.toggle('collapsed');
+      }
     });
 
     document.querySelectorAll('.nav-link').forEach(link => {
       link.addEventListener('click', () => {
-        sidebar?.classList.remove('open');
+        if (window.innerWidth <= 900) {
+          sidebar?.classList.remove('open');
+        }
       });
     });
 
@@ -202,10 +208,10 @@ class App {
       return;
     }
 
-    // Update active nav links (exact route matching so Quotes list is not highlighted when creating a New Quote)
+    // Update active nav links (All Documents handles /documents, /invoices, /quotes)
     document.querySelectorAll('.nav-link').forEach(link => {
       const href = link.getAttribute('href')?.slice(1);
-      if (href && hash === href) {
+      if (href && (hash === href || (href === '/documents' && (hash === '/invoices' || hash === '/quotes' || hash === '/documents')))) {
         link.classList.add('active');
       } else {
         link.classList.remove('active');
