@@ -1,0 +1,62 @@
+/* ==========================================================================
+   Print Stylesheet - High-Fidelity A4/Letter Document Printing
+   ========================================================================== */
+
+@media print {
+  /* Hide all app chrome and interactive elements */
+  .app-sidebar,
+  .app-topbar,
+  .preview-action-bar,
+  .btn,
+  .sidebar-actions,
+  #toast-container,
+  .modal-overlay,
+  .toolbar,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout containers for clean printing */
+  html, body, #app, .app-main, .app-viewport, .view-container, .document-sheet-wrapper {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .doc-paper {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 auto !important;
+    page-break-after: auto;
+  }
+
+  /* Ensure background colors and borders are preserved */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page break rules */
+  .doc-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .doc-footer-grid, .doc-totals-block, .doc-details-grid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+}
