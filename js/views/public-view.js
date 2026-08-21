@@ -17,7 +17,7 @@ export const PublicView = {
 
     const cleanId = (docId || '').split('?')[0];
 
-    // 1. Check shared document vault
+    // 1. Check shared document vault (if same browser/device)
     if (cleanId) {
       try {
         const vault = JSON.parse(localStorage.getItem('invoicemaster_shared_vault') || '{}');
@@ -28,18 +28,18 @@ export const PublicView = {
       } catch (e) {}
     }
 
-    // 2. Try decoding document payload from URL parameter 'p' or 'data'
+    // 2. Decode compact payload from URL parameter 'p' or 'data' (for mobile phones and external clients)
     if (!doc) {
-      const fullHash = window.location.hash;
+      const fullHash = window.location.hash || '';
       let encodedPayload = null;
 
       if (fullHash.includes('?')) {
-        const queryStr = fullHash.split('?')[1];
+        const queryStr = fullHash.substring(fullHash.indexOf('?') + 1);
         const urlParams = new URLSearchParams(queryStr);
         encodedPayload = urlParams.get('p') || urlParams.get('data');
       }
 
-      if (!encodedPayload) {
+      if (!encodedPayload && window.location.search) {
         const urlParams = new URLSearchParams(window.location.search);
         encodedPayload = urlParams.get('p') || urlParams.get('data');
       }
@@ -48,7 +48,10 @@ export const PublicView = {
         try {
           const json = decodeURIComponent(escape(atob(decodeURIComponent(encodedPayload))));
           const decoded = JSON.parse(json);
-          if (decoded && decoded.doc) {
+          if (decoded && decoded.d) {
+            doc = decoded.d;
+            settings = decoded.s || {};
+          } else if (decoded && decoded.doc) {
             doc = decoded.doc;
             settings = decoded.settings || {};
           }

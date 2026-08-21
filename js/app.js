@@ -581,8 +581,64 @@ class App {
       localStorage.setItem('invoicemaster_shared_vault', JSON.stringify(vault));
     } catch (e) {}
 
+    function buildCompactPayload(d, s) {
+      const cleanBiz = { ...(s.business || {}) };
+      // Strip large raw base64 data to keep URL small and fast
+      if (cleanBiz.logo && cleanBiz.logo.startsWith('data:')) {
+        delete cleanBiz.logo;
+      }
+      
+      const minDoc = {
+        id: d.id,
+        type: d.type,
+        number: d.number,
+        date: d.date,
+        dueDate: d.dueDate || '',
+        expirationDate: d.expirationDate || '',
+        status: d.status || 'Active',
+        currency: d.currency || s.currency || 'USD',
+        template: d.template || s.defaultTemplate || 'modern',
+        customer: d.customer || {},
+        items: (d.items || []).map(i => ({
+          description: i.description || '',
+          notes: i.notes || '',
+          quantity: Number(i.quantity) || 1,
+          unit: i.unit || '',
+          unitPrice: Number(i.unitPrice) || 0,
+          discountValue: Number(i.discountValue) || 0,
+          discountType: i.discountType || 'percent',
+          taxRate: Number(i.taxRate) || 0
+        })),
+        docDiscountValue: Number(d.docDiscountValue) || 0,
+        shippingFee: Number(d.shippingFee) || 0,
+        additionalCharges: Number(d.additionalCharges) || 0,
+        notes: d.notes || '',
+        brandHeadingColor: d.brandHeadingColor || s.brandHeadingColor || s.brandColor || '#2563eb',
+        brandAccentColor: d.brandAccentColor || s.brandAccentColor || '#3b82f6',
+        brandHeaderBg: d.brandHeaderBg || s.brandHeaderBg || '#0f172a',
+        brandBodyColor: d.brandBodyColor || s.brandBodyColor || '#1e293b',
+        brandFooterBg: d.brandFooterBg || s.brandFooterBg || '#f8fafc',
+        brandFont: d.brandFont || s.brandFont || 'Inter'
+      };
+
+      const minSettings = {
+        business: cleanBiz,
+        taxName: s.taxName || 'Tax',
+        defaultInvoiceNotes: s.defaultInvoiceNotes || '',
+        defaultQuoteNotes: s.defaultQuoteNotes || ''
+      };
+
+      try {
+        const json = JSON.stringify({ d: minDoc, s: minSettings });
+        return encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
+      } catch (e) {
+        return '';
+      }
+    }
+
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const publicUrl = `${baseUrl}#/view/${doc.id}`;
+    const pData = buildCompactPayload(doc, settings);
+    const publicUrl = pData ? `${baseUrl}#/view/${doc.id}?p=${pData}` : `${baseUrl}#/view/${doc.id}`;
 
     // Default message bodies
     const defaultNote = isInvoice 
