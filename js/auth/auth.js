@@ -6,7 +6,7 @@
  *   - Multi-organization workspaces (each org gets its own namespaced data)
  *   - Session management with expiry
  *   - Org switching (users can belong to multiple orgs)
- *   - Invite-based org membership
+ *   - Organization deletion & full Account deletion
  */
 
 const AUTH_PREFIX = 'im_auth_';
@@ -41,8 +41,6 @@ function uid() {
 
 /** Minimal password hash (SHA-256 via SubtleCrypto is async; use sync XOR-based for demo) */
 function hashPassword(password) {
-  // NOTE: In a real app, replace with bcrypt on the server.
-  // This is a client-side demo hash only.
   let hash = 0;
   for (let i = 0; i < password.length; i++) {
     const char = password.charCodeAt(i);
@@ -284,6 +282,123 @@ export const Auth = {
     saveMemberships(memberships);
 
     return { success: true, orgId };
+  },
+
+  /**
+   * Delete an organization by ID.
+   * Cleans up all namespaced localStorage records for that organization,
+   * updates memberships, and auto-switches to another workspace.
+   * @param {string} orgId
+   * @returns {{ success: boolean, error?: string, remainingOrgsCount: number }}
+   */
+  deleteOrg(orgId) {
+    const session = Session.get();
+    if (!session) return { success: false, error: 'Not logged in.' };
+
+    const orgs = getOrgs();
+    if (!orgs[orgId]) return { success: false, error: 'Organization not found.' };
+
+    const memberships = getMemberships();
+    const userMemberships = memberships[session.userId] || [];
+    const isMember = userMemberships.some(m => m.orgId === orgId);
+    if (!isMember) return { success: false, error: 'Access denied.' };
+
+    // 1. Remove all namespaced data for this organization
+    const prefix = `invoicemaster_v1_${orgId}_`;
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // 2. Remove org from orgs registry
+    delete orgs[orgId];
+    saveOrgs(orgs);
+
+    // 3. Remove membership for all users
+    Object.keys(memberships).forEach(uid => {
+      memberships[uid] = memberships[uid].filter(m => m.orgId !== orgId);
+    });
+    saveMemberships(memberships);
+
+    // 4. Update session if active org was deleted
+    const remaining = memberships[session.userId] || [];
+    if (session.orgId === orgId) {
+      if (remaining.length > 0) {
+        Session.set(session.userId, remaining[0].orgId);
+      } else {
+        // Create a fallback workspace for the user
+        const newOrgId = `org_${uid()}`;
+        const user = getAccounts()[session.userId];
+        const defaultName = `${user?.name || 'Personal'} Workspace`;
+        orgs[newOrgId] = {
+          id: newOrgId,
+          name: defaultName,
+          slug: defaultName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          ownerId: session.userId,
+          plan: 'free',
+          createdAt: Date.now(),
+          memberCount: 1,
+          logoColor: _pickOrgColor(newOrgId),
+        };
+        saveOrgs(orgs);
+        memberships[session.userId] = [{ orgId: newOrgId, role: 'owner', joinedAt: Date.now() }];
+        saveMemberships(memberships);
+        Session.set(session.userId, newOrgId);
+      }
+    }
+
+    return { success: true, remainingOrgsCount: remaining.length };
+  },
+
+  /**
+   * Delete the user's entire account, credentials, and all owned organization workspaces.
+   * Completely logs the user out.
+   * @returns {{ success: boolean }}
+   */
+  deleteAccount() {
+    const session = Session.get();
+    if (!session) return { success: false, error: 'Not logged in.' };
+
+    const userId = session.userId;
+    const memberships = getMemberships();
+    const userMemberships = memberships[userId] || [];
+    const orgs = getOrgs();
+
+    // 1. Delete all orgs owned by user and their data
+    userMemberships.forEach(m => {
+      const org = orgs[m.orgId];
+      if (org && org.ownerId === userId) {
+        const prefix = `invoicemaster_v1_${m.orgId}_`;
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(prefix)) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        delete orgs[m.orgId];
+      }
+    });
+    saveOrgs(orgs);
+
+    // 2. Remove user memberships
+    delete memberships[userId];
+    saveMemberships(memberships);
+
+    // 3. Remove user account
+    const accounts = getAccounts();
+    delete accounts[userId];
+    saveAccounts(accounts);
+
+    // 4. Clear session
+    Session.clear();
+
+    return { success: true };
   },
 
   /**

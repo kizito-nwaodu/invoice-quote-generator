@@ -1,19 +1,23 @@
 /**
  * Settings & Business Configuration View
- * Manages Business Identity, Invoicing Defaults, Branding, Taxes, and Data Backup/Restore.
+ * Manages Business Identity, Invoicing Defaults, Branding, Taxes, Account & Workspace Deletion, and Data Backup/Restore.
  */
 
 import { SettingsRepo, DataRepo } from '../storage/repository.js';
 import { BackupManager } from '../export/backup.js';
+import { Auth, Session } from '../auth/auth.js';
 import { getIcon } from '../../assets/icons.js';
 
 export const SettingsView = {
-  activeTab: 'business', // 'business' | 'defaults' | 'branding' | 'backup'
+  activeTab: 'business', // 'business' | 'defaults' | 'branding' | 'account' | 'backup'
 
   render(container) {
     this.container = container;
     const settings = SettingsRepo.get();
     const business = settings.business || {};
+    const currentUser = Auth.currentUser() || { name: 'User', email: 'user@example.com' };
+    const currentOrg = Auth.currentOrg() || { id: 'org_default', name: 'My Workspace', plan: 'Free' };
+    const allUserOrgs = Auth.currentUserOrgs();
 
     const colorPresets = [
       { name: 'Royal Blue', hex: '#2563eb' },
@@ -34,7 +38,7 @@ export const SettingsView = {
       <div class="view-header">
         <div>
           <h1 class="view-title">Workspace Settings</h1>
-          <p class="view-subtitle">Customize business details, branding identity, invoice numbering, and data management.</p>
+          <p class="view-subtitle">Customize business details, branding identity, invoice numbering, accounts, and data management.</p>
         </div>
         <div>
           <button type="button" id="btn-save-settings" class="btn btn-primary">
@@ -44,7 +48,7 @@ export const SettingsView = {
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="segment-control" style="margin-bottom: 24px; max-width: 600px;">
+      <div class="segment-control" style="margin-bottom: 24px; max-width: 750px;">
         <button type="button" class="segment-btn ${this.activeTab === 'business' ? 'active' : ''}" data-tab="business">
           Business Profile
         </button>
@@ -53,6 +57,9 @@ export const SettingsView = {
         </button>
         <button type="button" class="segment-btn ${this.activeTab === 'branding' ? 'active' : ''}" data-tab="branding">
           Branding & Identity
+        </button>
+        <button type="button" class="segment-btn ${this.activeTab === 'account' ? 'active' : ''}" data-tab="account">
+          Account & Workspaces
         </button>
         <button type="button" class="segment-btn ${this.activeTab === 'backup' ? 'active' : ''}" data-tab="backup">
           Data & Backup
@@ -376,7 +383,101 @@ export const SettingsView = {
           </div>
         </div>
 
-        <!-- Tab 4: Data Backup & Safety -->
+        <!-- Tab 4: Account & Workspaces -->
+        <div id="tab-account" class="tab-pane ${this.activeTab === 'account' ? 'active' : ''}" style="${this.activeTab === 'account' ? '' : 'display: none;'}">
+          
+          <div class="card" style="margin-bottom: 20px;">
+            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('user')} User Account Profile</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="acc-user-name" class="form-control" value="${currentUser.name || ''}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" value="${currentUser.email || ''}" disabled style="background: var(--bg-app); opacity: 0.8;">
+              </div>
+            </div>
+            <button type="button" id="btn-update-acc-profile" class="btn btn-secondary btn-sm">
+              ${getIcon('check')} Update Profile
+            </button>
+          </div>
+
+          <div class="card" style="margin-bottom: 20px;">
+            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('building')} Active Organization Workspace</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Workspace Name</label>
+                <input type="text" id="acc-org-name" class="form-control" value="${currentOrg.name || ''}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Workspace ID</label>
+                <input type="text" class="form-control" value="${currentOrg.id || ''}" disabled style="background: var(--bg-app); font-family: var(--font-mono); font-size: 12px;">
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" id="btn-update-acc-org" class="btn btn-secondary btn-sm">
+                ${getIcon('check')} Rename Workspace
+              </button>
+              <button type="button" id="btn-create-new-workspace" class="btn btn-secondary btn-sm">
+                ${getIcon('plus')} New Workspace
+              </button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 20px;">
+            <h2 class="card-title" style="margin-bottom: 16px;">${getIcon('grid')} Your Workspaces (${allUserOrgs.length})</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              ${allUserOrgs.map(org => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: ${org.logoColor || '#6366f1'}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">
+                      ${org.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">
+                        ${org.name} ${org.id === currentOrg.id ? '<span class="badge badge-paid" style="margin-left: 6px; font-size: 10px;">Active</span>' : ''}
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--text-muted);">
+                        Role: ${org.role || 'Owner'} • Plan: ${org.plan || 'Free'}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    ${org.id !== currentOrg.id ? `
+                      <button type="button" class="btn btn-subtle btn-sm btn-switch-workspace" data-org-id="${org.id}">
+                        Switch
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Danger Zone: Deletion Section -->
+          <div class="card" style="border-color: #fca5a5; background: #fff5f5; margin-bottom: 20px;">
+            <h2 class="card-title" style="color: #b91c1c; margin-bottom: 12px;">${getIcon('alertCircle')} Danger Zone — Delete Workspace</h2>
+            <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+              Deleting <strong>${currentOrg.name}</strong> will permanently erase all its invoices, quotes, customer ledger records, product catalog, and settings. This cannot be undone.
+            </p>
+            <button type="button" id="btn-delete-active-org" class="btn btn-danger btn-sm">
+              ${getIcon('trash')} Delete Workspace "${currentOrg.name}"
+            </button>
+          </div>
+
+          <div class="card" style="border-color: #ef4444; background: #fef2f2;">
+            <h2 class="card-title" style="color: #991b1b; margin-bottom: 12px;">${getIcon('trash')} Permanent Account Deletion</h2>
+            <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+              Permanently close and delete your user account (<strong>${currentUser.email}</strong>) and all associated organization workspaces and data. You will be logged out immediately.
+            </p>
+            <button type="button" id="btn-delete-full-account" class="btn btn-danger btn-sm" style="background: #991b1b; border-color: #991b1b;">
+              ${getIcon('trash')} Delete Account & All Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 5: Data Backup & Safety -->
         <div id="tab-backup" class="tab-pane ${this.activeTab === 'backup' ? 'active' : ''}" style="${this.activeTab === 'backup' ? '' : 'display: none;'}">
           <div class="card" style="margin-bottom: 20px;">
             <h2 class="card-title" style="margin-bottom: 12px;">${getIcon('download')} Backup & Data Export</h2>
@@ -410,12 +511,12 @@ export const SettingsView = {
           </div>
 
           <div class="card" style="border-color: #fca5a5; background: #fff5f5;">
-            <h2 class="card-title" style="color: #b91c1c; margin-bottom: 8px;">${getIcon('alertCircle')} Factory Reset</h2>
+            <h2 class="card-title" style="color: #b91c1c; margin-bottom: 8px;">${getIcon('alertCircle')} Factory Reset Current Workspace</h2>
             <p style="color: #7f1d1d; font-size: 13px; margin-bottom: 16px;">
-              Permanently clear all data and reset the workspace to a blank state. This action cannot be undone unless you have an exported JSON backup.
+              Permanently clear all document and customer records in this workspace and reset to a blank state.
             </p>
             <button type="button" id="btn-factory-reset" class="btn btn-danger btn-sm">
-              ${getIcon('trash')} Clear All Data (Reset App)
+              ${getIcon('trash')} Clear All Workspace Data
             </button>
           </div>
         </div>
@@ -542,6 +643,80 @@ export const SettingsView = {
       window.app.showToast('Branding Saved', 'Logo, colors, and typography preferences applied to all documents.', 'success');
     });
 
+    // Update User Profile
+    this.container.querySelector('#btn-update-acc-profile')?.addEventListener('click', () => {
+      const name = this.container.querySelector('#acc-user-name')?.value;
+      if (name) {
+        Auth.updateProfile({ name });
+        window.app.showToast('Profile Updated', 'Your name has been updated.', 'success');
+        this.render(this.container);
+      }
+    });
+
+    // Rename Active Org
+    this.container.querySelector('#btn-update-acc-org')?.addEventListener('click', () => {
+      const name = this.container.querySelector('#acc-org-name')?.value;
+      if (name) {
+        Auth.updateOrg({ name });
+        window.app.showToast('Workspace Renamed', `Workspace renamed to "${name}".`, 'success');
+        this.render(this.container);
+      }
+    });
+
+    // Create New Workspace
+    this.container.querySelector('#btn-create-new-workspace')?.addEventListener('click', () => {
+      const name = prompt('Enter a name for the new organization workspace:');
+      if (name && name.trim()) {
+        const res = Auth.createOrg({ name: name.trim() });
+        if (res.success) {
+          Auth.switchOrg(res.orgId);
+          window.app.showToast('Workspace Created', `Switched to "${name}".`, 'success');
+          window.location.reload();
+        } else {
+          window.app.showToast('Error', res.error, 'error');
+        }
+      }
+    });
+
+    // Switch Workspace
+    this.container.querySelectorAll('.btn-switch-workspace').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const orgId = btn.dataset.orgId;
+        if (Auth.switchOrg(orgId)) {
+          window.location.reload();
+        }
+      });
+    });
+
+    // Delete Active Workspace
+    this.container.querySelector('#btn-delete-active-org')?.addEventListener('click', () => {
+      const org = Auth.currentOrg();
+      const confirmPrompt = prompt(`CRITICAL ACTION: To permanently delete workspace "${org?.name}" and all its records, type DELETE below:`);
+      if (confirmPrompt === 'DELETE') {
+        const res = Auth.deleteOrg(org.id);
+        if (res.success) {
+          window.app.showToast('Workspace Deleted', `Workspace "${org?.name}" has been permanently deleted.`, 'info');
+          window.location.reload();
+        } else {
+          window.app.showToast('Error', res.error, 'error');
+        }
+      } else if (confirmPrompt !== null) {
+        window.app.showToast('Cancelled', 'Workspace deletion was cancelled (confirmation mismatch).', 'info');
+      }
+    });
+
+    // Delete Full Account
+    this.container.querySelector('#btn-delete-full-account')?.addEventListener('click', () => {
+      const confirmPrompt = prompt('FINAL WARNING: This will permanently delete your entire account, all organizations, and all data. Type DELETE MY ACCOUNT to confirm:');
+      if (confirmPrompt === 'DELETE MY ACCOUNT') {
+        Auth.deleteAccount();
+        window.app.showToast('Account Deleted', 'Your account and all associated data have been permanently erased.', 'info');
+        window.location.href = 'landing.html';
+      } else if (confirmPrompt !== null) {
+        window.app.showToast('Cancelled', 'Account deletion cancelled (confirmation mismatch).', 'info');
+      }
+    });
+
     // Global Save Settings
     this.container.querySelector('#btn-save-settings')?.addEventListener('click', () => {
       const settings = SettingsRepo.get();
@@ -623,7 +798,7 @@ export const SettingsView = {
 
     // Factory Reset
     this.container.querySelector('#btn-factory-reset')?.addEventListener('click', () => {
-      if (confirm('CRITICAL WARNING: This will permanently delete ALL documents, clients, catalog items, and settings. Are you sure you want to reset everything?')) {
+      if (confirm('CRITICAL WARNING: This will permanently clear all invoices, quotes, products, and clients in this workspace. Continue?')) {
         DataRepo.resetAllData();
         window.app.showToast('Reset Complete', 'Workspace returned to default state.', 'info');
         window.location.hash = '#/';

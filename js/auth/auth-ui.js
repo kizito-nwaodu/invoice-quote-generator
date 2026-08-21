@@ -269,6 +269,10 @@ function _showUserMenu(anchorEl, onOrgSwitch) {
     <div class="user-menu-section-label">Your Organizations</div>
     <div class="user-menu-orgs">${orgListHTML}</div>
     <div class="user-menu-divider"></div>
+    <button type="button" class="user-menu-action" id="btn-manage-orgs">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      Manage Workspaces & Account
+    </button>
     <button type="button" class="user-menu-action" id="btn-create-org">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
       New Organization
@@ -299,6 +303,16 @@ function _showUserMenu(anchorEl, onOrgSwitch) {
         popover.remove();
       }
     });
+  });
+
+  // Manage orgs / account
+  popover.querySelector('#btn-manage-orgs')?.addEventListener('click', () => {
+    popover.remove();
+    window.location.hash = '#/settings';
+    setTimeout(() => {
+      const accTabBtn = document.querySelector('.segment-btn[data-tab="account"]');
+      if (accTabBtn) accTabBtn.click();
+    }, 100);
   });
 
   // Create org
