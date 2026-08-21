@@ -91,15 +91,15 @@ class App {
       const user = Auth.currentUser();
       const org  = Auth.currentOrg();
       if (user && org) {
-        const initials = org.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        const initials = (org.name || 'MB').split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || 'MB';
         topbarWidget.innerHTML = `
-          <button type="button" id="btn-topbar-user" title="Account: ${escapeHTML(user.name)}" style="
+          <button type="button" id="btn-topbar-user" title="Account: ${escapeHTML(user.name || 'User')}" style="
             display:flex; align-items:center; gap:7px; background:transparent; border:none;
             cursor:pointer; padding:5px 8px; border-radius:8px; font-family:inherit;
             transition:background 0.15s;
           " onmouseover="this.style.background='var(--bg-surface-subtle)'" onmouseout="this.style.background='transparent'">
             <div style="width:30px;height:30px;border-radius:8px;background:${org.logoColor || '#2563eb'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;">${initials}</div>
-            <span style="font-size:12.5px;font-weight:600;color:var(--text-secondary);">${escapeHTML(user.name.split(' ')[0])}</span>
+            <span style="font-size:12.5px;font-weight:600;color:var(--text-secondary);">${escapeHTML((user.name || 'User').split(' ')[0] || 'User')}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
         `;
@@ -215,42 +215,54 @@ class App {
     });
 
     // Route matching
-    if (hash === '/dashboard') {
-      DashboardView.render(this.viewport);
-    } else if (hash === '/invoices') {
-      DocumentsView.render(this.viewport, 'invoice');
-    } else if (hash === '/quotes') {
-      DocumentsView.render(this.viewport, 'quote');
-    } else if (hash === '/documents') {
-      DocumentsView.render(this.viewport, 'all');
-    } else if (hash === '/invoices/new') {
-      EditorView.render(this.viewport, null, 'invoice');
-    } else if (hash === '/quotes/new') {
-      EditorView.render(this.viewport, null, 'quote');
-    } else if (hash.startsWith('/documents/') && hash.endsWith('/edit')) {
-      const parts = hash.split('/');
-      const docId = parts[2];
-      EditorView.render(this.viewport, docId);
-    } else if (hash.startsWith('/editor/')) {
-      const docId = hash.replace('/editor/', '');
-      EditorView.render(this.viewport, docId);
-    } else if (hash.startsWith('/documents/') && hash.endsWith('/preview')) {
-      const parts = hash.split('/');
-      const docId = parts[2];
-      PreviewView.render(this.viewport, docId);
-    } else if (hash.startsWith('/preview/')) {
-      const docId = hash.replace('/preview/', '');
-      PreviewView.render(this.viewport, docId);
-    } else if (hash === '/customers') {
-      CustomersView.render(this.viewport);
-    } else if (hash === '/products') {
-      ProductsView.render(this.viewport);
-    } else if (hash === '/settings') {
-      SettingsView.render(this.viewport);
-    } else if (hash === '/tests') {
-      TestsView.render(this.viewport);
-    } else {
-      DashboardView.render(this.viewport);
+    try {
+      if (hash === '/dashboard') {
+        DashboardView.render(this.viewport);
+      } else if (hash === '/invoices') {
+        DocumentsView.render(this.viewport, 'invoice');
+      } else if (hash === '/quotes') {
+        DocumentsView.render(this.viewport, 'quote');
+      } else if (hash === '/documents') {
+        DocumentsView.render(this.viewport, 'all');
+      } else if (hash === '/invoices/new') {
+        EditorView.render(this.viewport, null, 'invoice');
+      } else if (hash === '/quotes/new') {
+        EditorView.render(this.viewport, null, 'quote');
+      } else if (hash.startsWith('/documents/') && hash.endsWith('/edit')) {
+        const parts = hash.split('/');
+        const docId = parts[2];
+        EditorView.render(this.viewport, docId);
+      } else if (hash.startsWith('/editor/')) {
+        const docId = hash.replace('/editor/', '');
+        EditorView.render(this.viewport, docId);
+      } else if (hash.startsWith('/documents/') && hash.endsWith('/preview')) {
+        const parts = hash.split('/');
+        const docId = parts[2];
+        PreviewView.render(this.viewport, docId);
+      } else if (hash.startsWith('/preview/')) {
+        const docId = hash.replace('/preview/', '');
+        PreviewView.render(this.viewport, docId);
+      } else if (hash === '/customers') {
+        CustomersView.render(this.viewport);
+      } else if (hash === '/products') {
+        ProductsView.render(this.viewport);
+      } else if (hash === '/settings') {
+        SettingsView.render(this.viewport);
+      } else if (hash === '/tests') {
+        TestsView.render(this.viewport);
+      } else {
+        DashboardView.render(this.viewport);
+      }
+    } catch (renderError) {
+      console.error('View Render Error:', renderError);
+      this.viewport.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; max-width: 600px; margin: 40px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px;">⚠️</div>
+          <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px;">Notice</h2>
+          <p style="color: #64748b; font-size: 13.5px; margin-bottom: 20px;">${escapeHTML(renderError.message || 'An unexpected state occurred while rendering.')}</p>
+          <button onclick="window.location.hash='#/dashboard'; window.location.reload();" class="btn btn-primary btn-sm">Reload Dashboard</button>
+        </div>
+      `;
     }
 
     this.viewport.scrollTop = 0;

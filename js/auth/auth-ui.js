@@ -42,10 +42,10 @@ export const AuthUI = {
     const org = Auth.currentOrg();
     if (!user || !org) return '';
 
-    const initials = org.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const initials = (org.name || 'MB').split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || 'MB';
     return `
       <button type="button" id="btn-user-menu" class="org-badge-btn" title="Switch organization or sign out">
-        <div class="org-avatar" style="background: ${org.logoColor};">${initials}</div>
+        <div class="org-avatar" style="background: ${org.logoColor || '#2563eb'};">${initials}</div>
         <div class="org-badge-info">
           <div class="org-badge-name">${_esc(org.name)}</div>
           <div class="org-badge-user">${_esc(user.name)}</div>
@@ -244,11 +244,11 @@ function _showUserMenu(anchorEl, onOrgSwitch) {
   popover.className = 'user-menu-popover';
 
   const orgListHTML = orgs.map(o => {
-    const initials = o.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const initials = (o.name || 'W').split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || 'W';
     const isActive = o.id === org.id;
     return `
       <button type="button" class="user-menu-org-item ${isActive ? 'active' : ''}" data-org-id="${o.id}">
-        <div class="org-avatar-sm" style="background:${o.logoColor};">${initials}</div>
+        <div class="org-avatar-sm" style="background:${o.logoColor || '#2563eb'};">${initials}</div>
         <div class="user-menu-org-info">
           <div class="user-menu-org-name">${_esc(o.name)}</div>
           <div class="user-menu-org-role">${o.role} · ${o.plan === 'free' ? 'Free plan' : 'Pro plan'}</div>
@@ -260,7 +260,7 @@ function _showUserMenu(anchorEl, onOrgSwitch) {
 
   popover.innerHTML = `
     <div class="user-menu-header">
-      <div class="user-menu-avatar" style="background:${org.logoColor};">${user.avatar || user.name[0].toUpperCase()}</div>
+      <div class="user-menu-avatar" style="background:${org.logoColor || '#2563eb'};">${user.avatar || (user.name || 'U')[0].toUpperCase()}</div>
       <div>
         <div class="user-menu-name">${_esc(user.name)}</div>
         <div class="user-menu-email">${_esc(user.email)}</div>

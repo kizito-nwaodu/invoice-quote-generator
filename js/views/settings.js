@@ -492,11 +492,11 @@ export const SettingsView = {
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 8px; border: 1px solid ${o.id === currentOrg.id ? '#2563eb' : 'var(--border-subtle)'}; background: ${o.id === currentOrg.id ? 'rgba(37,99,235,0.04)' : 'transparent'};">
                   <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 28px; height: 28px; border-radius: 6px; background: ${o.logoColor || '#2563eb'}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">
-                      ${o.name[0].toUpperCase()}
+                      ${(o.name || 'W')[0].toUpperCase()}
                     </div>
                     <div>
-                      <div style="font-weight: 700; font-size: 13.5px;">${o.name}</div>
-                      <div style="font-size: 11.5px; color: var(--text-muted);">${o.role} · ${o.plan}</div>
+                      <div style="font-weight: 700; font-size: 13.5px;">${escapeHTML(o.name || 'Workspace')}</div>
+                      <div style="font-size: 11.5px; color: var(--text-muted);">${escapeHTML(o.role || 'Owner')} · ${escapeHTML(o.plan || 'Free')}</div>
                     </div>
                   </div>
                   <div>
