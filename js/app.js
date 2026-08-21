@@ -202,17 +202,37 @@ class App {
       return;
     }
 
-    // Update active nav links
+    // Update active nav links (exact route matching so Quotes list is not highlighted when creating a New Quote)
     document.querySelectorAll('.nav-link').forEach(link => {
       const href = link.getAttribute('href')?.slice(1);
-      if (href && (hash === href || (href !== '/dashboard' && href !== '/documents' && hash.startsWith(href)))) {
-        link.classList.add('active');
-      } else if (href === '/documents' && hash === '/documents') {
+      if (href && hash === href) {
         link.classList.add('active');
       } else {
         link.classList.remove('active');
       }
     });
+
+    // Update sidebar quick action buttons state
+    const btnNewInv = document.getElementById('nav-btn-new-invoice');
+    const btnNewQuo = document.getElementById('nav-btn-new-quote');
+    if (btnNewInv) {
+      if (hash === '/invoices/new') {
+        btnNewInv.style.boxShadow = '0 0 0 2px #ffffff, 0 0 0 4px #2563eb';
+      } else {
+        btnNewInv.style.boxShadow = 'none';
+      }
+    }
+    if (btnNewQuo) {
+      if (hash === '/quotes/new') {
+        btnNewQuo.style.background = 'rgba(37, 99, 235, 0.3)';
+        btnNewQuo.style.color = '#ffffff';
+        btnNewQuo.style.border = '1px solid #3b82f6';
+      } else {
+        btnNewQuo.style.background = 'rgba(255,255,255,0.06)';
+        btnNewQuo.style.color = '#cbd5e1';
+        btnNewQuo.style.border = 'none';
+      }
+    }
 
     // Route matching
     try {
