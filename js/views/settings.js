@@ -5,6 +5,7 @@
 import { SettingsRepo, CustomerRepo, ProductRepo, DocumentRepo } from '../storage/repository.js';
 import { getIcon } from '../../assets/icons.js';
 import { Auth } from '../auth/auth.js';
+import { escapeHTML } from '../engine/formatter.js';
 
 export const SettingsView = {
   activeTab: 'business',

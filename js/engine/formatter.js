@@ -110,13 +110,13 @@ export function addDays(dateStr, days = 0) {
 }
 
 /**
- * Formats sequential document numbers (e.g. "INV-0042")
+ * Formats sequential document numbers (e.g. "INV-00042")
  * @param {string} prefix 
  * @param {number} counter 
  * @param {number} padLength 
  * @returns {string}
  */
-export function formatDocNumber(prefix = 'INV-', counter = 1, padLength = 4) {
+export function formatDocNumber(prefix = 'INV-', counter = 1, padLength = 5) {
   const numStr = String(counter).padStart(padLength, '0');
   return `${prefix}${numStr}`;
 }
