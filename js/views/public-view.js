@@ -5,7 +5,7 @@
 import { DocumentRepo, SettingsRepo } from '../storage/repository.js';
 import { formatCurrency, formatDate, escapeHTML, sanitizeURL } from '../engine/formatter.js';
 import { calculateDocument } from '../engine/calculation.js';
-import { PDFExporter } from '../export/pdf.js';
+import { PDFExport } from '../export/pdf.js';
 
 export const PublicView = {
   render(container, docId) {
@@ -227,7 +227,7 @@ export const PublicView = {
     container.querySelector('#btn-public-print')?.addEventListener('click', () => window.print());
     container.querySelector('#btn-public-pdf')?.addEventListener('click', () => {
       const paper = container.querySelector('#invoice-paper');
-      if (paper) PDFExporter.exportFromElement(paper, `${doc.number}.pdf`);
+      if (paper) PDFExport.downloadPDF(paper, `${doc.number}.pdf`);
     });
   }
 };
