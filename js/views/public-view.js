@@ -15,37 +15,51 @@ export const PublicView = {
     let doc = null;
     let settings = null;
 
-    // 1. Try decoding document payload from URL parameter 'p' or 'data'
-    const fullHash = window.location.hash;
-    let encodedPayload = null;
+    const cleanId = (docId || '').split('?')[0];
 
-    if (fullHash.includes('?')) {
-      const queryStr = fullHash.split('?')[1];
-      const urlParams = new URLSearchParams(queryStr);
-      encodedPayload = urlParams.get('p') || urlParams.get('data');
-    }
-
-    if (!encodedPayload) {
-      const urlParams = new URLSearchParams(window.location.search);
-      encodedPayload = urlParams.get('p') || urlParams.get('data');
-    }
-
-    if (encodedPayload) {
+    // 1. Check shared document vault
+    if (cleanId) {
       try {
-        const json = decodeURIComponent(escape(atob(decodeURIComponent(encodedPayload))));
-        const decoded = JSON.parse(json);
-        if (decoded && decoded.doc) {
-          doc = decoded.doc;
-          settings = decoded.settings || {};
+        const vault = JSON.parse(localStorage.getItem('invoicemaster_shared_vault') || '{}');
+        if (vault[cleanId]) {
+          doc = vault[cleanId].doc;
+          settings = vault[cleanId].settings;
         }
-      } catch (e) {
-        console.warn('Could not decode URL payload:', e);
+      } catch (e) {}
+    }
+
+    // 2. Try decoding document payload from URL parameter 'p' or 'data'
+    if (!doc) {
+      const fullHash = window.location.hash;
+      let encodedPayload = null;
+
+      if (fullHash.includes('?')) {
+        const queryStr = fullHash.split('?')[1];
+        const urlParams = new URLSearchParams(queryStr);
+        encodedPayload = urlParams.get('p') || urlParams.get('data');
+      }
+
+      if (!encodedPayload) {
+        const urlParams = new URLSearchParams(window.location.search);
+        encodedPayload = urlParams.get('p') || urlParams.get('data');
+      }
+
+      if (encodedPayload) {
+        try {
+          const json = decodeURIComponent(escape(atob(decodeURIComponent(encodedPayload))));
+          const decoded = JSON.parse(json);
+          if (decoded && decoded.doc) {
+            doc = decoded.doc;
+            settings = decoded.settings || {};
+          }
+        } catch (e) {
+          console.warn('Could not decode URL payload:', e);
+        }
       }
     }
 
-    // 2. Fallback to local storage (for workspace owner previewing)
-    if (!doc && docId) {
-      const cleanId = docId.split('?')[0];
+    // 3. Fallback to local active org repository
+    if (!doc && cleanId) {
       doc = DocumentRepo.getById(cleanId);
       settings = SettingsRepo.get();
     }

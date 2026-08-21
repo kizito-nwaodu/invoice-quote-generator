@@ -548,35 +548,15 @@ class App {
     const clientName = doc.customer?.name || 'Valued Client';
     const bizName = settings.business?.name || 'Our Company';
 
-    // Self-contained public link with encoded document payload
-    function encodePayload(d, s) {
-      try {
-        const payload = {
-          doc: d,
-          settings: {
-            business: s.business || {},
-            brandHeadingColor: s.brandHeadingColor || s.brandColor,
-            brandAccentColor: s.brandAccentColor,
-            brandHeaderBg: s.brandHeaderBg,
-            brandBodyColor: s.brandBodyColor,
-            brandFooterBg: s.brandFooterBg,
-            brandFont: s.brandFont,
-            defaultTemplate: s.defaultTemplate,
-            defaultInvoiceNotes: s.defaultInvoiceNotes,
-            defaultQuoteNotes: s.defaultQuoteNotes,
-            currency: s.currency,
-            taxName: s.taxName
-          }
-        };
-        return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
-      } catch (e) {
-        return '';
-      }
-    }
+    // Save to public shared vault
+    try {
+      const vault = JSON.parse(localStorage.getItem('invoicemaster_shared_vault') || '{}');
+      vault[doc.id] = { doc, settings };
+      localStorage.setItem('invoicemaster_shared_vault', JSON.stringify(vault));
+    } catch (e) {}
 
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    const pData = encodePayload(doc, settings);
-    const publicUrl = `${baseUrl}#/view/${doc.id}?p=${pData}`;
+    const publicUrl = `${baseUrl}#/view/${doc.id}`;
 
     // Default message bodies
     const defaultNote = isInvoice 
@@ -785,12 +765,12 @@ class App {
 
       if (activeChannel === 'whatsapp') {
         const isDirect = modalEl.querySelector('#wa-opt-direct')?.checked;
-        const phone = (modalEl.querySelector('#share-wa-phone')?.value || '').replace(/[^\d+]/g, '');
+        const phone = (modalEl.querySelector('#share-wa-phone')?.value || '').replace(/[^\d]/g, '');
         const msg = encodeURIComponent(modalEl.querySelector('#share-wa-msg')?.value || '');
         
         const waUrl = (isDirect && phone)
-          ? `https://api.whatsapp.com/send?phone=${phone}&text=${msg}`
-          : `https://api.whatsapp.com/send?text=${msg}`;
+          ? `https://wa.me/${phone}?text=${msg}`
+          : `https://wa.me/?text=${msg}`;
           
         window.open(waUrl, '_blank');
       } else {
